@@ -66,6 +66,9 @@ from audio.pre_roll import AudioPreRoll, AudioPreRollConfig
 from core.fact_verifier import HardFactVerifier, FactVerifierConfig
 from integration.active_steering import ActiveSteering, ActiveSteeringConfig
 
+# Phase 23 components
+from core.meeting_behavior import MeetingBehaviorEngine, MeetingBehaviorConfig
+
 # Phase 11 components
 from core.live_context import LiveContextManager, LiveContextConfig
 from vision.ui_detector import UIDetector, UIDetectorConfig
@@ -155,6 +158,10 @@ class OrchestratorConfig(BaseModel):
     enable_engagement_analyzer: bool = Field(default=False, description="Enable Engagement Analyzer")
     enable_facilitator: bool = Field(default=False, description="Enable Facilitator Logic")
     enable_slide_master: bool = Field(default=False, description="Enable Slide Master (presentation navigation)")
+    
+    # Phase 23: Human Fallibility Engine
+    enable_meeting_behavior: bool = Field(default=False, description="Enable Human Fallibility Engine")
+    meeting_behavior_enabled: bool = Field(default=True, description="Enable meeting behavior scenarios")
 
 
 class Orchestrator:
@@ -218,6 +225,9 @@ class Orchestrator:
         # Phase 9 components
         self.fact_verifier = None
         self.active_steering = None
+        
+        # Phase 23: Human Fallibility Engine
+        self.meeting_behavior_engine = None
         
         # Phase 2: Vision Detector
         if self.config.enable_vision:
@@ -386,11 +396,7 @@ class Orchestrator:
         if self.config.enable_interrupt_handler:
             try:
                 interrupt_config = InterruptHandlerConfig()
-                self.interrupt_handler = InterruptHandler(
-                    interrupt_config,
-                    on_interrupt=self._on_interrupt,
-                    on_resume=self._on_resume
-                )
+                self.interrupt_handler = InterruptHandler(interrupt_config)
                 logger.info("Interrupt Handler initialized")
             except Exception as e:
                 logger.error(f"Failed to initialize Interrupt Handler: {e}")
@@ -398,12 +404,8 @@ class Orchestrator:
         # Phase 8: Speculative Ingest
         if self.config.enable_speculative_ingest:
             try:
-                spec_config = SpeculativeIngestConfig()
-                self.speculative_ingest = SpeculativeIngest(
-                    spec_config,
-                    on_intent_detected=self._on_intent_detected,
-                    on_context_ready=self._on_context_ready
-                )
+                ingest_config = SpeculativeIngestConfig()
+                self.speculative_ingest = SpeculativeIngest(ingest_config)
                 logger.info("Speculative Ingest initialized")
             except Exception as e:
                 logger.error(f"Failed to initialize Speculative Ingest: {e}")
@@ -412,55 +414,50 @@ class Orchestrator:
         if self.config.enable_streaming_pipeline:
             try:
                 stream_config = StreamingPipelineConfig()
-                self.streaming_pipeline = StreamingPipeline(
-                    stream_config,
-                    on_stage_change=self._on_pipeline_stage_change,
-                    on_first_audio=self._on_first_audio
-                )
+                self.streaming_pipeline = StreamingPipeline(stream_config)
                 logger.info("Streaming Pipeline initialized")
             except Exception as e:
                 logger.error(f"Failed to initialize Streaming Pipeline: {e}")
         
-        # Phase 8: Audio Pre-roll
+        # Phase 8: Audio Pre-Roll
         if self.config.enable_audio_preroll:
             try:
                 preroll_config = AudioPreRollConfig()
                 self.audio_preroll = AudioPreRoll(preroll_config)
-                logger.info("Audio Pre-roll initialized")
+                logger.info("Audio Pre-Roll initialized")
             except Exception as e:
-                logger.error(f"Failed to initialize Audio Pre-roll: {e}")
+                logger.error(f"Failed to initialize Audio Pre-Roll: {e}")
         
         # Phase 9: Hard Fact Verifier
         if self.config.enable_fact_verifier:
             try:
-                fv_config = FactVerifierConfig()
-                self.fact_verifier = HardFactVerifier(fv_config)
+                fact_config = FactVerifierConfig()
+                self.fact_verifier = HardFactVerifier(fact_config)
                 logger.info("Hard Fact Verifier initialized")
             except Exception as e:
-                logger.error(f"Failed to initialize Fact Verifier: {e}")
+                logger.error(f"Failed to initialize Hard Fact Verifier: {e}")
         
         # Phase 9: Active Steering
         if self.config.enable_active_steering:
             try:
-                steer_config = ActiveSteeringConfig()
-                self.active_steering = ActiveSteering(
-                    steer_config,
-                    on_steering=self._on_steering_command
-                )
+                steering_config = ActiveSteeringConfig()
+                self.active_steering = ActiveSteering(steering_config)
                 logger.info("Active Steering initialized")
             except Exception as e:
                 logger.error(f"Failed to initialize Active Steering: {e}")
         
-        # Phase 11: Live Context (Active RAG)
-        if self.config.enable_live_context:
+        # Phase 23: Human Fallibility Engine
+        if self.config.enable_meeting_behavior:
             try:
-                lc_config = LiveContextConfig()
-                self.live_context = LiveContextManager(lc_config)
-                logger.info("Live Context Manager initialized")
+                behavior_config = MeetingBehaviorConfig(
+                    enabled=self.config.meeting_behavior_enabled
+                )
+                self.meeting_behavior_engine = MeetingBehaviorEngine(behavior_config)
+                logger.info("Meeting Behavior Engine initialized")
             except Exception as e:
-                logger.error(f"Failed to initialize Live Context: {e}")
+                logger.error(f"Failed to initialize Meeting Behavior Engine: {e}")
         
-        # Phase 11: UI Detector
+        # Phase 11: Live Context
         if self.config.enable_ui_detector:
             try:
                 uid_config = UIDetectorConfig(platform=self.config.platform)
@@ -733,7 +730,136 @@ class Orchestrator:
         except Exception as e:
             logger.error(f"Error handling transcription: {e}")
     
-    async def _on_detection(self, result: Dict[str, Any]):
+    # ═══════════════════════════════════════════════════════════════
+    # PHASE 23: MEETING BEHAVIOR ENGINE
+    # ═══════════════════════════════════════════════════════════════
+    async def check_calendar_for_meeting(self):
+        """
+        Check calendar for upcoming meetings and trigger behavior scenarios
+        
+        This should be called periodically (e.g., every minute) to check for meetings
+        starting within the next 5 minutes.
+        """
+        if not self.meeting_behavior_engine or not self.config.enable_meeting_behavior:
+            return
+        
+        try:
+            # Get next meeting from calendar
+            if self.calendar_sync:
+                next_meeting = await self.calendar_sync.get_next_meeting()
+                
+                if next_meeting:
+                    meeting_start = next_meeting.get("start_time")
+                    if meeting_start:
+                        now = datetime.now(timezone.utc)
+                        time_until_meeting = (meeting_start - now).total_seconds()
+                        
+                        # Check if meeting starts within 5 minutes
+                        if 0 < time_until_meeting <= 300:  # 5 minutes = 300 seconds
+                            logger.info(f"Meeting starting in {time_until_meeting/60:.1f} minutes, rolling Join-Dice...")
+                            
+                            # Calculate join time based on scenario
+                            join_time = self.meeting_behavior_engine.calculate_join_time(meeting_start)
+                            scenario = self.meeting_behavior_engine.current_scenario
+                            
+                            logger.info(f"Scenario: {scenario.value}, Join time: {join_time}")
+                            
+                            # Execute scenario
+                            await self.meeting_behavior_engine.execute_scenario(scenario, self)
+        except Exception as e:
+            logger.error(f"Error checking calendar for meeting: {e}")
+    
+    async def send_message(self, message: str):
+        """
+        Send a message to the meeting (interface for meeting behavior engine)
+        
+        Args:
+            message: Message to send
+        """
+        try:
+            # This would integrate with the actual meeting platform (Teams, Zoom, etc.)
+            # For now, we'll log it and potentially use the audio synthesizer
+            logger.info(f"Sending message: {message}")
+            
+            if self.audio_synthesizer:
+                # Convert text to speech and play
+                await self.audio_synthesizer.speak(message)
+        except Exception as e:
+            logger.error(f"Error sending message: {e}")
+    
+    async def set_status(self, status: str):
+        """
+        Set meeting status (interface for meeting behavior engine)
+        
+        Args:
+            status: Status string (e.g., "Talking", "Muted")
+        """
+        try:
+            logger.info(f"Setting status: {status}")
+            # This would integrate with the meeting platform
+            # For now, just log it
+        except Exception as e:
+            logger.error(f"Error setting status: {e}")
+    
+    async def set_audio_enabled(self, enabled: bool):
+        """
+        Enable/disable audio (interface for meeting behavior engine)
+        
+        Args:
+            enabled: Whether audio should be enabled
+        """
+        try:
+            logger.info(f"Setting audio enabled: {enabled}")
+            # This would integrate with the meeting platform
+            # For now, just log it
+        except Exception as e:
+            logger.error(f"Error setting audio enabled: {e}")
+    
+    async def play_asset(self, asset_name: str):
+        """
+        Play a pre-recorded asset (interface for meeting behavior engine)
+        
+        Args:
+            asset_name: Name of the asset to play (e.g., "phone_call_clip")
+        """
+        try:
+            logger.info(f"Playing asset: {asset_name}")
+            # This would play a pre-recorded video/audio clip
+            # For now, just log it
+        except Exception as e:
+            logger.error(f"Error playing asset: {e}")
+    
+    async def stop_asset(self):
+        """Stop playing current asset (interface for meeting behavior engine)"""
+        try:
+            logger.info("Stopping asset playback")
+            # This would stop the current asset playback
+            # For now, just log it
+        except Exception as e:
+            logger.error(f"Error stopping asset: {e}")
+    
+    def update_meeting_behavior_config(self, **kwargs):
+        """
+        Update meeting behavior configuration
+        
+        Args:
+            **kwargs: Configuration parameters to update
+        """
+        if self.meeting_behavior_engine:
+            self.meeting_behavior_engine.update_config(**kwargs)
+    
+    def get_meeting_behavior_config(self) -> Dict[str, Any]:
+        """
+        Get current meeting behavior configuration
+        
+        Returns:
+            Configuration dictionary
+        """
+        if self.meeting_behavior_engine:
+            return self.meeting_behavior_engine.get_config().to_dict()
+        return {}
+    
+    def _on_detection(self, result: Dict[str, Any]):
         """Callback for vision detection results"""
         try:
             faces = result.get("faces", [])

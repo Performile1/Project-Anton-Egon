@@ -141,6 +141,13 @@ Anton Egon is a fully autonomous AI agent designed to participate in Teams meeti
 - **Connection Testing:** Test-knappar för Supabase, Groq, och Tailscale anslutningar
 - **Configuration Management:** Spara till .env eller ladda ner konfigurationsfil
 
+### Phase 23: Human Fallibility Engine ✅
+- **Meeting Behavior Engine (core/meeting_behavior.py):** Join-Dice randomizer med tre scenarier (Late Joiner, Mute-Glitcher, Phone Caller)
+- **Phrase Library Update:** apologies_for_lateness kategori med svenska ursäkter
+- **Orchestrator Integration:** Kalenderkoll 5 minuter före möte, scenario execution
+- **Human Flaws Tab:** Dashboard UI för att toggla beteenden och justera sannolikheter
+- **API Endpoints:** /api/flaws/config, /api/flaws/toggle, /api/flaws/roll-dice
+
 ### Additional Features ✅
 - **Platform Selector:** Multi-platform support (Teams, Google Meet, Zoom, Webex, Slack)
 - **Calendar Integration:** Microsoft Graph + Google Calendar API
@@ -619,10 +626,10 @@ LLM_MODEL_PATH=models/llama-3-8b-instruct-q4_k_m.gguf
 ## Current System Status (2026-04-29)
 
 ### Codebase
-- **69 Python-moduler** i 8 mappar (core/audio/vision/video/integration/ui/memory/comms) + Dockerfile + .env
+- **70 Python-moduler** i 8 mappar (core/audio/vision/video/integration/ui/memory/comms) + Dockerfile + .env
 - **5 JavaScript-filer** i desktop/ (Electron app, Phase 12)
 - **7 root-scripts** (ingest.py, init_project.py, download_models.py, manage.py, setup_calendar.py, start_studio_mac.sh, start_studio_windows.bat)
-- **49 implementerade features** (Phase 1-9 + Stealth + Phase 11 + Studio & Harvester + Cross-Platform Deployment + Unified Communication Hub + The Trickster Engine + Cloud Infrastructure + Turing Mirror + Resilience & Recovery + Chaos Engine Assets + Turing Mirror & QA Engine + Setup Wizard)
+- **50 implementerade features** (Phase 1-9 + Stealth + Phase 11 + Studio & Harvester + Cross-Platform Deployment + Unified Communication Hub + The Trickster Engine + Cloud Infrastructure + Turing Mirror + Resilience & Recovery + Chaos Engine Assets + Turing Mirror & QA Engine + Setup Wizard + Human Fallibility Engine)
 - **0 kända syntaxfel** (alla filer kompilerar)
 
 ### Installed Dependencies
@@ -1000,7 +1007,7 @@ MIT License - See LICENSE file for details
 ---
 
 **Last Updated:** 2026-05-01
-**Version:** 1.9.0
-**Phases Implemented:** 1-9, Stealth, 11, Studio & Harvester, Cross-Platform Deployment, Unified Communication Hub, The Trickster Engine, Cloud Infrastructure, Turing Mirror, Resilience & Recovery, Chaos Engine Assets, Turing Mirror & QA Engine, Setup Wizard
-**Modules:** 69 Python-filer + 5 JavaScript (Electron) + 7 scripts (incl. Studio launchers) + Dockerfile + .env
+**Version:** 2.0.0
+**Phases Implemented:** 1-9, Stealth, 11, Studio & Harvester, Cross-Platform Deployment, Unified Communication Hub, The Trickster Engine, Cloud Infrastructure, Turing Mirror, Resilience & Recovery, Chaos Engine Assets, Turing Mirror & QA Engine, Setup Wizard, Human Fallibility Engine
+**Modules:** 70 Python-filer + 5 JavaScript (Electron) + 7 scripts (incl. Studio launchers) + Dockerfile + .env
 **Status:** MVP Ready (pending physical recording + LivePortrait integration + Electron build + API credentials for comms adapters + prop/overlay assets + cloud deployment on RunPod)

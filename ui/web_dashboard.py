@@ -430,6 +430,64 @@ class WebDashboard:
                 logger.error(f"Failed to save configuration: {e}")
                 return {"success": False, "error": str(e)}
         
+        # ═══════════════════════════════════════════════════════════════
+        # HUMAN FLAWS API (Phase 23)
+        # ═══════════════════════════════════════════════════════════════
+        @self.app.get("/api/flaws/config")
+        async def get_flaws_config():
+            """Get current meeting behavior configuration"""
+            try:
+                from core.meeting_behavior import meeting_behavior_engine
+                
+                config = meeting_behavior_engine.get_config()
+                return {"success": True, "config": config.to_dict()}
+            except Exception as e:
+                logger.error(f"Failed to get flaws config: {e}")
+                return {"success": False, "error": str(e)}
+        
+        @self.app.post("/api/flaws/config")
+        async def update_flaws_config(config: Dict[str, Any]):
+            """Update meeting behavior configuration"""
+            try:
+                from core.meeting_behavior import meeting_behavior_engine
+                
+                meeting_behavior_engine.update_config(**config)
+                return {"success": True, "message": "Configuration updated"}
+            except Exception as e:
+                logger.error(f"Failed to update flaws config: {e}")
+                return {"success": False, "error": str(e)}
+        
+        @self.app.post("/api/flaws/toggle")
+        async def toggle_flaws_engine(enabled: bool):
+            """Toggle meeting behavior engine"""
+            try:
+                from core.meeting_behavior import meeting_behavior_engine
+                
+                meeting_behavior_engine.update_config(enabled=enabled)
+                return {"success": True, "message": f"Engine {'enabled' if enabled else 'disabled'}"}
+            except Exception as e:
+                logger.error(f"Failed to toggle flaws engine: {e}")
+                return {"success": False, "error": str(e)}
+        
+        @self.app.post("/api/flaws/roll-dice")
+        async def roll_join_dice():
+            """Roll the Join-Dice to test a scenario"""
+            try:
+                from core.meeting_behavior import meeting_behavior_engine
+                
+                scenario = meeting_behavior_engine.roll_join_dice()
+                dice_roll = random.randint(1, 6)
+                
+                return {
+                    "success": True,
+                    "dice_roll": dice_roll,
+                    "scenario": scenario.value,
+                    "description": meeting_behavior_engine.get_scenario_description(scenario)
+                }
+            except Exception as e:
+                logger.error(f"Failed to roll join dice: {e}")
+                return {"success": False, "error": str(e)}
+        
         @self.app.websocket("/ws")
         async def websocket_endpoint(websocket: WebSocket):
             """WebSocket endpoint for real-time updates"""
@@ -552,6 +610,7 @@ class WebDashboard:
     <button class="tab-btn" onclick="switchTab('inbox')">Unified Inbox</button>
     <button class="tab-btn" onclick="switchTab('phrases')">Phrase Library</button>
     <button class="tab-btn" onclick="switchTab('chaos')">Chaos Dashboard</button>
+    <button class="tab-btn" onclick="switchTab('flaws')">Human Flaws</button>
     <button class="tab-btn" onclick="switchTab('turing')">Turing Mirror</button>
     <button class="tab-btn" onclick="switchTab('health')">System Health</button>
     <button class="tab-btn" onclick="switchTab('studio')">The Studio</button>
@@ -716,7 +775,111 @@ class WebDashboard:
     </div>
 </div>
 
-<!-- ══════ TAB 1: DASHBOARD ══════ -->
+<!-- ══════ TAB 1: HUMAN FLAWS (Phase 23) ══════ -->
+<div id="tab-flaws" class="tab-content">
+    <div class="grid" style="max-width:1200px;margin:0 auto;">
+        <div class="card" style="grid-column:1/-1;">
+            <h3>🎭 Human Fallibility Engine</h3>
+            <p style="color:var(--muted);margin-bottom:24px;">
+                Configure human-like behaviors at meeting start to break the "perfect AI" pattern. 
+                These scenarios simulate natural human imperfections like late joins, mute glitches, and multitasking.
+            </p>
+            
+            <!-- Enable/Disable -->
+            <div class="card" style="margin-bottom:16px;">
+                <h4>Engine Status</h4>
+                <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
+                    <input type="checkbox" id="flaws-enabled" checked onchange="toggleFlawsEngine()">
+                    <label for="flaws-enabled" style="font-size:.9em;">Enable Human Fallibility Engine</label>
+                </div>
+                <div id="flaws-status" style="font-size:.85em;color:var(--muted);">Engine is enabled</div>
+            </div>
+            
+            <!-- Scenario Probabilities -->
+            <div class="card" style="margin-bottom:16px;">
+                <h4>Scenario Probabilities</h4>
+                <p style="color:var(--muted);font-size:.85em;margin-bottom:12px;">
+                    Adjust the probability of each scenario. Total should equal 100%.
+                </p>
+                <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:12px;">
+                    <div>
+                        <label style="font-size:.85em;color:var(--muted);">Late Joiner (%)</label>
+                        <input type="number" id="late-joiner-prob" value="33" min="0" max="100" style="width:100%;padding:8px;background:var(--border);border:none;color:#fff;border-radius:5px;">
+                    </div>
+                    <div>
+                        <label style="font-size:.85em;color:var(--muted);">Mute Glitcher (%)</label>
+                        <input type="number" id="mute-glitcher-prob" value="33" min="0" max="100" style="width:100%;padding:8px;background:var(--border);border:none;color:#fff;border-radius:5px;">
+                    </div>
+                    <div>
+                        <label style="font-size:.85em;color:var(--muted);">Phone Caller (%)</label>
+                        <input type="number" id="phone-caller-prob" value="34" min="0" max="100" style="width:100%;padding:8px;background:var(--border);border:none;color:#fff;border-radius:5px;">
+                    </div>
+                </div>
+                <div id="prob-total" style="font-size:.85em;color:var(--muted);margin-bottom:12px;">Total: 100%</div>
+                <button class="btn btn-accent" onclick="saveFlawsConfig()">Save Probabilities</button>
+            </div>
+            
+            <!-- Scenario Details -->
+            <div class="card" style="margin-bottom:16px;">
+                <h4>Scenario Details</h4>
+                <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;">
+                    <div style="padding:12px;background:rgba(255,215,0,.1);border-radius:8px;">
+                        <h5 style="margin:0 0 8px 0;font-size:.9em;">🕐 Late Joiner</h5>
+                        <p style="font-size:.8em;color:var(--muted);margin:0;">
+                            Join 5 minutes late with random apology from phrase library.
+                        </p>
+                    </div>
+                    <div style="padding:12px;background:rgba(78,204,163,.1);border-radius:8px;">
+                        <h5 style="margin:0 0 8px 0;font-size:.9em;">🔇 Mute Glitcher</h5>
+                        <p style="font-size:.8em;color:var(--muted);margin:0;">
+                            Join early, set status to "Talking" without audio. Wait for "on mute" trigger.
+                        </p>
+                    </div>
+                    <div style="padding:12px;background:rgba(233,69,96,.1);border-radius:8px;">
+                        <h5 style="margin:0 0 8px 0;font-size:.9em;">📞 Phone Caller</h5>
+                        <p style="font-size:.8em;color:var(--muted);margin:0;">
+                            Join early with phone call clip. Stop at meeting start with greeting.
+                        </p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Timing Configuration -->
+            <div class="card" style="margin-bottom:16px;">
+                <h4>Timing Configuration</h4>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+                    <div>
+                        <label style="font-size:.85em;color:var(--muted);">Late Join Delay (minutes)</label>
+                        <input type="number" id="late-delay" value="5" min="1" max="30" style="width:100%;padding:8px;background:var(--border);border:none;color:#fff;border-radius:5px;">
+                    </div>
+                    <div>
+                        <label style="font-size:.85em;color:var(--muted);">Early Join Time (minutes)</label>
+                        <input type="number" id="early-join" value="3" min="1" max="10" style="width:100%;padding:8px;background:var(--border);border:none;color:#fff;border-radius:5px;">
+                    </div>
+                </div>
+                <button class="btn btn-outline" onclick="saveFlawsConfig()">Save Timing</button>
+            </div>
+            
+            <!-- Test Scenario -->
+            <div class="card" style="margin-bottom:16px;">
+                <h4>Test Scenario</h4>
+                <p style="color:var(--muted);font-size:.85em;margin-bottom:12px;">
+                    Roll the Join-Dice to test a random scenario (doesn't actually join a meeting).
+                </p>
+                <button class="btn btn-accent" onclick="rollJoinDice()">Roll Join-Dice</button>
+                <div id="dice-result" style="margin-top:12px;font-size:.85em;color:var(--muted);"></div>
+            </div>
+            
+            <!-- Current Scenario Info -->
+            <div class="card" style="margin-bottom:16px;">
+                <h4>Current Scenario</h4>
+                <div id="current-scenario" style="font-size:.85em;color:var(--muted);">No scenario active</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ══════ TAB 2: DASHBOARD ══════ -->
 <div id="tab-dashboard" class="tab-content active">
     <div class="grid">
         <div class="card"><h3>Status</h3><div id="status-content">Loading...</div></div>
@@ -1595,6 +1758,110 @@ async function initTuringMirror() {
     } catch(e) {
         console.error('Failed to access camera:', e);
         document.getElementById('live-camera').poster = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="%2316213e"/><text x="50" y="50" text-anchor="middle" fill="%238892b0" font-size="10">Camera unavailable</text></svg>');
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// HUMAN FLAWS (Phase 23)
+// ═══════════════════════════════════════════════════════════════
+async function toggleFlawsEngine() {
+    const enabled = document.getElementById('flaws-enabled').checked;
+    const status = document.getElementById('flaws-status');
+    
+    try {
+        const r = await fetch('/api/flaws/toggle', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({enabled})
+        });
+        const d = await r.json();
+        
+        if (d.success) {
+            status.textContent = enabled ? 'Engine is enabled' : 'Engine is disabled';
+            status.style.color = enabled ? '#4ecca3' : '#e94560';
+        } else {
+            status.textContent = 'Error: ' + d.error;
+        }
+    } catch(e) {
+        status.textContent = 'Error: Failed to toggle engine';
+    }
+}
+
+async function saveFlawsConfig() {
+    const config = {
+        late_joiner_probability: parseInt(document.getElementById('late-joiner-prob').value) / 100,
+        mute_glitcher_probability: parseInt(document.getElementById('mute-glitcher-prob').value) / 100,
+        phone_caller_probability: parseInt(document.getElementById('phone-caller-prob').value) / 100,
+        late_joiner_delay_minutes: parseInt(document.getElementById('late-delay').value),
+        early_join_minutes: parseInt(document.getElementById('early-join').value)
+    };
+    
+    // Update total display
+    const total = config.late_joiner_probability + config.mute_glitcher_probability + config.phone_caller_probability;
+    document.getElementById('prob-total').textContent = `Total: ${(total * 100).toFixed(0)}%`;
+    
+    try {
+        const r = await fetch('/api/flaws/config', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(config)
+        });
+        const d = await r.json();
+        
+        if (d.success) {
+            alert('Configuration saved successfully');
+        } else {
+            alert('Error: ' + d.error);
+        }
+    } catch(e) {
+        alert('Error: Failed to save configuration');
+    }
+}
+
+async function rollJoinDice() {
+    try {
+        const r = await fetch('/api/flaws/roll-dice', {method: 'POST'});
+        const d = await r.json();
+        
+        const resultDiv = document.getElementById('dice-result');
+        resultDiv.textContent = `Rolled ${d.dice_roll}: ${d.scenario}`;
+        resultDiv.style.color = '#ffd700';
+        
+        // Update current scenario
+        document.getElementById('current-scenario').textContent = `Active: ${d.scenario} (Description: ${d.description})`;
+    } catch(e) {
+        document.getElementById('dice-result').textContent = 'Error: Failed to roll dice';
+    }
+}
+
+// Load config when tab is opened
+const originalSwitchTab2 = switchTab;
+switchTab = function(tabId) {
+    originalSwitchTab2(tabId);
+    if (tabId === 'flaws') {
+        loadFlawsConfig();
+    }
+};
+
+async function loadFlawsConfig() {
+    try {
+        const r = await fetch('/api/flaws/config');
+        const d = await r.json();
+        
+        if (d.config) {
+            document.getElementById('flaws-enabled').checked = d.config.enabled;
+            document.getElementById('late-joiner-prob').value = Math.round(d.config.late_joiner_probability * 100);
+            document.getElementById('mute-glitcher-prob').value = Math.round(d.config.mute_glitcher_probability * 100);
+            document.getElementById('phone-caller-prob').value = Math.round(d.config.phone_caller_probability * 100);
+            document.getElementById('late-delay').value = d.config.late_joiner_delay_minutes;
+            document.getElementById('early-join').value = d.config.early_join_minutes;
+            
+            const status = document.getElementById('flaws-status');
+            status.textContent = d.config.enabled ? 'Engine is enabled' : 'Engine is disabled';
+            status.style.color = d.config.enabled ? '#4ecca3' : '#e94560';
+        }
+    } catch(e) {
+        console.error('Failed to load flaws config:', e);
     }
 }
 

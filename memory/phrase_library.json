@@ -1,0 +1,51 @@
+{
+  "apologies_for_lateness": [
+    "Sjukt ledsen hörni, mötet innan drog över tiden. Nu kör vi!",
+    "Ledsen för dröjsmålet, tekniken strulade lite här hemma. Kanon att vara på plats.",
+    "Ursäkta, jag satt fast i en annan tråd. Var är vi i agendan?",
+    "Förlåt att jag är sen, hade ett brådskande samtal. Vad har jag missat?",
+    "Sorry allihop, klockan här hemma gick lite fel. Vi kör!",
+    "Ledsen, jag var tvungen att ta ett kort samtal. Hänger på nu."
+  ],
+  "filler_phrases": [
+    "Ja, precis.",
+    "Absolut.",
+    "Helt rätt.",
+    "Jag förstår vad du menar.",
+    "Det är en intressant poäng.",
+    "Låt mig tänka på det lite.",
+    "Det stämmer.",
+    "Japp, det är det jag också tänker."
+  ],
+  "jargon_injections": [
+    "Vi behöver aligna på deliverables",
+    "Låt oss circle back på detta",
+    "Vi should touch base offline",
+    "Detta är low-hanging fruit",
+    "Vi need to drill down på detaljerna",
+    "Låt oss keep this in the pipeline",
+    "Vi need to leverage synergies",
+    "Detta är en win-win situation"
+  ],
+  "transition_phrases": [
+    "Förra vi går vidare...",
+    "En annan sak att tänka på är...",
+    "Det leder mig till nästa punkt...",
+    "Låt oss byta fokus lite...",
+    "Jag vill också nämna..."
+  ],
+  "agreement_phrases": [
+    "Jag håller med om det.",
+    "Det låter som en bra plan.",
+    "Jag är helt på samma sida.",
+    "Det verkar rimligt.",
+    "Jag kan gå med på det."
+  ],
+  "disagreement_phrases": [
+    "Jag är inte helt säker på att jag håller med där.",
+    "Låt mig spela djävulens advokat en stund.",
+    "Jag har några funderingar kring det.",
+    "Vi kanske borde titta på det från ett annat perspektiv.",
+    "Jag ser några potentiella risker med det."
+  ]
+}
