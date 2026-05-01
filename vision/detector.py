@@ -66,6 +66,12 @@ class VisionConfig:
     EMOTION_MODEL = "deepface"
     FACE_DETECTION_MODEL = "yolov8n"
     SCREEN_CAPTURE_REGION = None  # None = full screen, or {"top": y, "left": x, "width": w, "height": h}
+    
+    # Sprint 3: Multi-Identity Tracking
+    ENABLE_MULTI_FACE = True  # Enable multi-face tracking
+    MAX_FACES = 10  # Maximum number of faces to track
+    FACE_RECOGNITION_THRESHOLD = 0.6  # Threshold for face matching
+    ENABLE_SPATIAL_INDEXING = True  # Enable spatial indexing (Left, Center, Right)
 
 
 class VisionDetector:
@@ -159,14 +165,17 @@ class VisionDetector:
         
         try:
             logger.info("Initializing Mediapipe Face Mesh")
+            # Sprint 3: Support multiple faces for multi-identity tracking
+            max_faces = VisionConfig.MAX_FACES if VisionConfig.ENABLE_MULTI_FACE else 1
+            
             self.face_mesh = mp.solutions.face_mesh.FaceMesh(
                 static_image_mode=False,
-                max_num_faces=1,
+                max_num_faces=max_faces,
                 refine_landmarks=True,
                 min_detection_confidence=0.5,
                 min_tracking_confidence=0.5
             )
-            logger.info("Mediapipe Face Mesh initialized successfully")
+            logger.info(f"Mediapipe Face Mesh initialized successfully (max_faces: {max_faces})")
         except Exception as e:
             logger.error(f"Failed to initialize Face Mesh: {e}")
             self.face_mesh = None
@@ -263,10 +272,32 @@ class VisionDetector:
                     x1, y1, x2, y2 = box.xyxy[0].cpu().numpy()
                     confidence = box.conf[0].cpu().numpy()
                     
+                    # Sprint 3: Add spatial indexing
+                    h, w = image.shape[:2]
+                    center_x = (x1 + x2) / 2
+                    
+                    # Determine spatial position (Left, Center, Right)
+                    if VisionConfig.ENABLE_SPATIAL_INDEXING:
+                        if center_x < w / 3:
+                            spatial_position = "left"
+                        elif center_x < 2 * w / 3:
+                            spatial_position = "center"
+                        else:
+                            spatial_position = "right"
+                    else:
+                        spatial_position = "unknown"
+                    
                     faces.append({
                         "bbox": [int(x1), int(y1), int(x2), int(y2)],
-                        "confidence": float(confidence)
+                        "confidence": float(confidence),
+                        "spatial_position": spatial_position,
+                        "center_x": float(center_x),
+                        "center_y": float((y1 + y2) / 2)
                     })
+            
+            # Sprint 3: Limit to max faces
+            if VisionConfig.ENABLE_MULTI_FACE and len(faces) > VisionConfig.MAX_FACES:
+                faces = sorted(faces, key=lambda x: x["confidence"], reverse=True)[:VisionConfig.MAX_FACES]
             
             return faces
             
@@ -346,6 +377,189 @@ class VisionDetector:
             
         except Exception as e:
             logger.debug(f"Face vector extraction error: {e}")
+            return None
+    
+    # ═══════════════════════════════════════════════════════════════
+    # SPRINT 3: MULTI-IDENTITY TRACKING
+    # ═══════════════════════════════════════════════════════════════
+    def recognize_face(self, face_vector: np.ndarray, people_crm: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+        """
+        Recognize face by comparing vector with People CRM
+        
+        Args:
+            face_vector: 128-d face vector to recognize
+            people_crm: List of people profiles with face_fingerprints
+        
+        Returns:
+            Matched person or None if no match found
+        """
+        if face_vector is None or not people_crm:
+            return None
+        
+        try:
+            best_match = None
+            best_score = 0.0
+            
+            for person in people_crm:
+                if 'face_fingerprint' not in person or person['face_fingerprint'] is None:
+                    continue
+                
+                # Compare face vectors using cosine similarity
+                crm_vector = np.array(person['face_fingerprint'])
+                similarity = np.dot(face_vector, crm_vector) / (np.linalg.norm(face_vector) * np.linalg.norm(crm_vector))
+                
+                if similarity > VisionConfig.FACE_RECOGNITION_THRESHOLD and similarity > best_score:
+                    best_score = similarity
+                    best_match = person
+            
+            if best_match:
+                return {
+                    "name": best_match.get("name", "Unknown"),
+                    "email": best_match.get("email", ""),
+                    "company": best_match.get("company", ""),
+                    "confidence": float(best_score)
+                }
+            
+            return None
+            
+        except Exception as e:
+            logger.error(f"Face recognition error: {e}")
+            return None
+    
+    def draw_bounding_boxes(self, image: np.ndarray, faces: List[Dict[str, Any]], recognized_people: List[Dict[str, Any]]) -> np.ndarray:
+        """
+        Draw bounding boxes with name tags on image
+        
+        Args:
+            image: Input image (BGR)
+            faces: List of detected faces with bbox and spatial_position
+            recognized_people: List of recognized people for each face
+        
+        Returns:
+            Image with bounding boxes and name tags drawn
+        """
+        try:
+            for i, face in enumerate(faces):
+                bbox = face["bbox"]
+                spatial_position = face.get("spatial_position", "unknown")
+                
+                # Get recognized person if available
+                person_info = recognized_people[i] if i < len(recognized_people) else None
+                name = person_info.get("name", f"Person {i+1}") if person_info else f"Person {i+1}"
+                confidence = person_info.get("confidence", 0.0) if person_info else 0.0
+                
+                # Color based on spatial position
+                color_map = {
+                    "left": (0, 255, 255),    # Cyan
+                    "center": (0, 255, 0),    # Green
+                    "right": (255, 0, 255)    # Magenta
+                }
+                color = color_map.get(spatial_position, (255, 255, 0))  # Yellow default
+                
+                # Draw bounding box
+                x1, y1, x2, y2 = bbox
+                cv2.rectangle(image, (x1, y1), (x2, y2), color, 2)
+                
+                # Draw name tag background
+                label = f"{name}"
+                if confidence > 0:
+                    label += f" ({confidence:.2f})"
+                
+                (label_w, label_h), _ = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.5, 2)
+                cv2.rectangle(image, (x1, y1 - label_h - 10), (x1 + label_w, y1), color, -1)
+                
+                # Draw name tag text
+                cv2.putText(image, label, (x1, y1 - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 2)
+                
+                # Draw spatial position indicator
+                cv2.putText(image, spatial_position.upper(), (x1, y2 + 20), cv2.FONT_HERSHEY_SIMPLEX, 0.4, color, 1)
+            
+            return image
+            
+        except Exception as e:
+            logger.error(f"Error drawing bounding boxes: {e}")
+            return image
+    
+    # ═══════════════════════════════════════════════════════════════
+    # SPRINT 3: VISUAL VOICE ACTIVITY DETECTION (V-VAD)
+    # ═══════════════════════════════════════════════════════════════
+    def extract_lip_movement(self, mesh_data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Extract lip movement from face mesh landmarks for V-VAD
+        
+        Args:
+            mesh_data: Face mesh data from extract_face_mesh
+        
+        Returns:
+            Dictionary with lip movement metrics
+        """
+        if mesh_data is None or 'key_points' not in mesh_data:
+            return {"movement_score": 0.0, "is_speaking": False}
+        
+        try:
+            key_points = mesh_data['key_points']
+            
+            # Get lip landmarks
+            left_mouth = key_points.get('left_mouth', {})
+            right_mouth = key_points.get('right_mouth', {})
+            upper_lip = key_points.get('upper_lip', {})
+            lower_lip = key_points.get('lower_lip', {})
+            
+            # Calculate mouth opening (distance between upper and lower lip)
+            mouth_opening = abs(lower_lip.get('y', 0) - upper_lip.get('y', 0))
+            
+            # Calculate mouth width (distance between left and right mouth)
+            mouth_width = abs(right_mouth.get('x', 0) - left_mouth.get('x', 0))
+            
+            # Movement score based on mouth opening and width changes
+            # This is a simplified version - in production, you'd track changes over time
+            movement_score = mouth_opening * 10.0 + mouth_width * 2.0
+            
+            # Speaking threshold (tunable based on testing)
+            speaking_threshold = 0.3
+            is_speaking = movement_score > speaking_threshold
+            
+            return {
+                "movement_score": float(movement_score),
+                "is_speaking": is_speaking,
+                "mouth_opening": float(mouth_opening),
+                "mouth_width": float(mouth_width)
+            }
+            
+        except Exception as e:
+            logger.error(f"Lip movement extraction error: {e}")
+            return {"movement_score": 0.0, "is_speaking": False}
+    
+    def detect_active_speaker(self, faces: List[Dict[str, Any]], lip_movements: List[Dict[str, Any]]) -> Optional[int]:
+        """
+        Determine which face is the active speaker based on lip movement
+        
+        Args:
+            faces: List of detected faces
+            lip_movements: List of lip movement data for each face
+        
+        Returns:
+            Index of active speaker or None if no clear speaker
+        """
+        try:
+            if not faces or not lip_movements:
+                return None
+            
+            # Find face with highest movement score that is speaking
+            best_speaker_idx = None
+            best_score = 0.0
+            
+            for i, lip_data in enumerate(lip_movements):
+                if lip_data.get("is_speaking", False):
+                    score = lip_data.get("movement_score", 0.0)
+                    if score > best_score:
+                        best_score = score
+                        best_speaker_idx = i
+            
+            return best_speaker_idx
+            
+        except Exception as e:
+            logger.error(f"Active speaker detection error: {e}")
             return None
     
     # ═══════════════════════════════════════════════════════════════

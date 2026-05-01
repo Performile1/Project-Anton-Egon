@@ -16,6 +16,13 @@ from loguru import logger
 
 from core.dispatcher import IncomingMessage, OutgoingMessage, Platform, CommunicationMode
 
+# Sprint 4: Supabase integration
+try:
+    from integration.supabase_client import supabase_client
+    SUPABASE_AVAILABLE = True
+except ImportError:
+    SUPABASE_AVAILABLE = False
+
 
 class InboxFilter(Enum):
     """Filter options for inbox"""
@@ -78,12 +85,97 @@ class UnifiedInbox:
         self.max_messages = 1000
         self.auto_cleanup_days = 30
         
+        # Sprint 4: Load from Supabase if available
+        if SUPABASE_AVAILABLE and supabase_client.is_connected():
+            self._load_from_supabase()
+        
         logger.info("Unified Inbox initialized")
     
     def set_dispatcher(self, dispatcher):
         """Set the dispatcher instance"""
         self.dispatcher = dispatcher
         logger.info("Dispatcher linked to Unified Inbox")
+    
+    # ═══════════════════════════════════════════════════════════════
+    # SPRINT 4: SUPABASE SYNC
+    # ═══════════════════════════════════════════════════════════════
+    async def _load_from_supabase(self):
+        """Load messages from Supabase"""
+        if not SUPABASE_AVAILABLE or not supabase_client.is_connected():
+            return
+        
+        try:
+            # Fetch inbox messages from Supabase
+            supabase_messages = await supabase_client.get_inbox_messages()
+            
+            for msg in supabase_messages:
+                # Convert to IncomingMessage
+                platform_map = {
+                    "teams": Platform.TEAMS_CHAT,
+                    "slack": Platform.SLACK,
+                    "email": Platform.EMAIL
+                }
+                
+                platform = platform_map.get(msg.get("platform", ""), Platform.TEAMS_CHAT)
+                
+                incoming = IncomingMessage(
+                    platform=platform,
+                    message_id=msg.get("message_id", ""),
+                    sender=msg.get("sender", "Unknown"),
+                    content=msg.get("body", ""),
+                    timestamp=datetime.fromisoformat(msg.get("timestamp", datetime.now(timezone.utc).isoformat())),
+                    metadata=msg
+                )
+                
+                # Add to inbox
+                unified = UnifiedMessage(
+                    original=incoming,
+                    priority=Priority.NORMAL,
+                    is_read=msg.get("is_read", False)
+                )
+                
+                self.messages.append(unified)
+            
+            logger.info(f"Loaded {len(supabase_messages)} messages from Supabase")
+        except Exception as e:
+            logger.error(f"Error loading from Supabase: {e}")
+    
+    async def sync_to_supabase(self, message_id: str) -> bool:
+        """
+        Sync a message to Supabase
+        
+        Args:
+            message_id: Message ID to sync
+        
+        Returns:
+            True if successful
+        """
+        if not SUPABASE_AVAILABLE or not supabase_client.is_connected():
+            return False
+        
+        try:
+            # Find message
+            unified = next((m for m in self.messages if m.original.message_id == message_id), None)
+            if not unified:
+                return False
+            
+            # Convert to Supabase format
+            message_data = {
+                "platform": unified.original.platform.value,
+                "message_id": unified.original.message_id,
+                "sender": unified.original.sender,
+                "subject": unified.original.metadata.get("subject", ""),
+                "body": unified.original.content,
+                "timestamp": unified.original.timestamp.isoformat(),
+                "is_read": unified.is_read,
+                "is_processed": False
+            }
+            
+            await supabase_client.create_inbox_message(message_data)
+            return True
+        except Exception as e:
+            logger.error(f"Error syncing to Supabase: {e}")
+            return False
     
     async def add_message(self, message: IncomingMessage, priority: Priority = Priority.NORMAL):
         """

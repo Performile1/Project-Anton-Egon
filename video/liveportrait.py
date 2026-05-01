@@ -32,6 +32,12 @@ class LivePortraitConfig:
     EXPRESSION_STRENGTH = 0.7
     SMOOTHING_FACTOR = 0.5
     TARGET_FPS = 30
+    
+    # Sprint 3: Real-time stitching optimization
+    ENABLE_FRAME_SMOOTHING = True  # Enable frame smoothing to prevent micro-jitters
+    FRAME_SMOOTHING_WINDOW = 3  # Number of frames for temporal smoothing
+    ENABLE_ANTIALIASING = True  # Enable anti-aliasing for smoother transitions
+    JITTER_THRESHOLD = 2.0  # Pixel threshold for jitter detection
 
 
 class LivePortraitAnimator:
@@ -51,6 +57,10 @@ class LivePortraitAnimator:
         self.model = None
         self.current_expression = Expression.NEUTRAL
         self.expression_strength = LivePortraitConfig.EXPRESSION_STRENGTH
+        
+        # Sprint 3: Frame smoothing buffer
+        self.frame_buffer = []  # Buffer for temporal smoothing
+        self.previous_frame = None  # Previous frame for jitter detection
         
         logger.info(f"LivePortrait animator initialized (model: {self.model_path})")
     
@@ -121,11 +131,91 @@ class LivePortraitAnimator:
                 # Apply lip-sync based on audio
                 animated_frame = self._apply_lip_sync(animated_frame, audio_features)
             
+            # Sprint 3: Apply frame smoothing to prevent micro-jitters
+            if LivePortraitConfig.ENABLE_FRAME_SMOOTHING:
+                animated_frame = self._apply_frame_smoothing(animated_frame)
+            
             return animated_frame
             
         except Exception as e:
             logger.error(f"Error animating frame: {e}")
             return frame
+    
+    # ═══════════════════════════════════════════════════════════════
+    # SPRINT 3: REAL-TIME STITCHING OPTIMIZATION
+    # ═══════════════════════════════════════════════════════════════
+    def _apply_frame_smoothing(self, frame: np.ndarray) -> np.ndarray:
+        """
+        Apply temporal smoothing to prevent micro-jitters
+        
+        Args:
+            frame: Input frame
+        
+        Returns:
+            Smoothed frame
+        """
+        try:
+            # Add current frame to buffer
+            self.frame_buffer.append(frame.copy())
+            
+            # Limit buffer size
+            if len(self.frame_buffer) > LivePortraitConfig.FRAME_SMOOTHING_WINDOW:
+                self.frame_buffer.pop(0)
+            
+            # Apply temporal smoothing (weighted average)
+            if len(self.frame_buffer) >= 2:
+                # Use exponential weighting (more recent frames have higher weight)
+                weights = np.linspace(0.3, 1.0, len(self.frame_buffer))
+                weights = weights / weights.sum()
+                
+                smoothed = np.zeros_like(frame)
+                for i, buffered_frame in enumerate(self.frame_buffer):
+                    smoothed += buffered_frame * weights[i]
+                
+                frame = smoothed.astype(np.uint8)
+            
+            # Detect and correct jitter
+            if self.previous_frame is not None:
+                frame = self._correct_jitter(frame, self.previous_frame)
+            
+            self.previous_frame = frame.copy()
+            return frame
+            
+        except Exception as e:
+            logger.error(f"Frame smoothing error: {e}")
+            return frame
+    
+    def _correct_jitter(self, current_frame: np.ndarray, previous_frame: np.ndarray) -> np.ndarray:
+        """
+        Detect and correct frame jitter
+        
+        Args:
+            current_frame: Current frame
+            previous_frame: Previous frame
+        
+        Returns:
+            Jitter-corrected frame
+        """
+        try:
+            # Calculate frame difference
+            diff = cv2.absdiff(current_frame, previous_frame)
+            diff_gray = cv2.cvtColor(diff, cv2.COLOR_BGR2GRAY)
+            
+            # Calculate average pixel difference
+            avg_diff = np.mean(diff_gray)
+            
+            # If difference exceeds threshold, apply smoothing
+            if avg_diff > LivePortraitConfig.JITTER_THRESHOLD:
+                # Blend with previous frame
+                blend_factor = 0.7
+                corrected = cv2.addWeighted(current_frame, blend_factor, previous_frame, 1 - blend_factor, 0)
+                return corrected
+            
+            return current_frame
+            
+        except Exception as e:
+            logger.error(f"Jitter correction error: {e}")
+            return current_frame
     
     def _apply_expression(self, frame: np.ndarray, expression: Expression) -> np.ndarray:
         """

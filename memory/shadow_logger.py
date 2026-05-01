@@ -15,6 +15,123 @@ from pathlib import Path
 from loguru import logger
 from pydantic import BaseModel, Field
 
+# Sprint 4: Supabase integration
+try:
+    from integration.supabase_client import supabase_client
+    SUPABASE_AVAILABLE = True
+except ImportError:
+    SUPABASE_AVAILABLE = False
+
+# GDPR Auto-Redact
+import re
+
+
+class AutoRedact:
+    """
+    GDPR-compliant PII masking for meeting logs
+    Automatically redacts sensitive information before storage
+    """
+    
+    # Patterns for PII detection
+    PATTERNS = {
+        'credit_card': r'\b(?:\d[ -]*?){13,16}\b',  # Credit card numbers
+        'ssn': r'\b\d{3}-\d{2}-\d{4}\b',  # SSN format
+        'email': r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b',  # Email addresses
+        'phone': r'\b(?:\+?1[-.\s]?)?\(?[0-9]{3}\)?[-.\s]?[0-9]{3}[-.\s]?[0-9]{4}\b',  # Phone numbers
+        'password': r'\b(password|pass|pwd)\s*[:=]\s*\S+',  # Password patterns
+        'api_key': r'\b(api[_-]?key|secret|token)\s*[:=]\s*[A-Za-z0-9_-]{20,}\b',  # API keys
+        'ip_address': r'\b(?:\d{1,3}\.){3}\d{1,3}\b',  # IP addresses
+    }
+    
+    def __init__(self, enabled: bool = True):
+        """
+        Initialize Auto-Redact
+        
+        Args:
+            enabled: Whether redaction is enabled
+        """
+        self.enabled = enabled
+        self.redaction_counts = {key: 0 for key in self.PATTERNS.keys()}
+        
+        logger.info(f"Auto-Redact initialized (enabled: {enabled})")
+    
+    def redact_text(self, text: str) -> str:
+        """
+        Redact PII from text
+        
+        Args:
+            text: Input text
+        
+        Returns:
+            Redacted text
+        """
+        if not self.enabled:
+            return text
+        
+        redacted = text
+        
+        for pattern_type, pattern in self.PATTERNS.items():
+            matches = re.findall(pattern, redacted, re.IGNORECASE)
+            if matches:
+                self.redaction_counts[pattern_type] += len(matches)
+                # Replace with placeholder
+                if pattern_type == 'email':
+                    redacted = re.sub(pattern, '[REDACTED_EMAIL]', redacted, flags=re.IGNORECASE)
+                elif pattern_type == 'credit_card':
+                    redacted = re.sub(pattern, '[REDACTED_CARD]', redacted, flags=re.IGNORECASE)
+                elif pattern_type == 'ssn':
+                    redacted = re.sub(pattern, '[REDACTED_SSN]', redacted, flags=re.IGNORECASE)
+                elif pattern_type == 'phone':
+                    redacted = re.sub(pattern, '[REDACTED_PHONE]', redacted, flags=re.IGNORECASE)
+                elif pattern_type == 'password':
+                    redacted = re.sub(pattern, '[REDACTED_PASSWORD]', redacted, flags=re.IGNORECASE)
+                elif pattern_type == 'api_key':
+                    redacted = re.sub(pattern, '[REDACTED_API_KEY]', redacted, flags=re.IGNORECASE)
+                elif pattern_type == 'ip_address':
+                    redacted = re.sub(pattern, '[REDACTED_IP]', redacted, flags=re.IGNORECASE)
+        
+        return redacted
+    
+    def redact_dict(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Redact PII from dictionary values
+        
+        Args:
+            data: Input dictionary
+        
+        Returns:
+            Redacted dictionary
+        """
+        if not self.enabled:
+            return data
+        
+        redacted = {}
+        for key, value in data.items():
+            if isinstance(value, str):
+                redacted[key] = self.redact_text(value)
+            elif isinstance(value, dict):
+                redacted[key] = self.redact_dict(value)
+            elif isinstance(value, list):
+                redacted[key] = [self.redact_text(item) if isinstance(item, str) else item for item in value]
+            else:
+                redacted[key] = value
+        
+        return redacted
+    
+    def get_redaction_stats(self) -> Dict[str, int]:
+        """
+        Get redaction statistics
+        
+        Returns:
+            Dictionary with redaction counts per PII type
+        """
+        return self.redaction_counts.copy()
+    
+    def reset_stats(self):
+        """Reset redaction statistics"""
+        self.redaction_counts = {key: 0 for key in self.PATTERNS.keys()}
+
+
 # Fix Windows encoding issue
 if sys.platform == 'win32':
     import io
@@ -27,6 +144,7 @@ class ShadowLoggerConfig(BaseModel):
     logs_dir: str = Field(default="memory/shadow_logs", description="Directory for shadow logs")
     auto_save: bool = Field(default=True, description="Auto-save logs after each entry")
     max_transcriptions_per_session: int = Field(default=1000, description="Max transcriptions per session")
+    enable_auto_redact: bool = Field(default=True, description="Enable GDPR Auto-Redact")
 
 
 class ShadowLogger:
@@ -51,6 +169,9 @@ class ShadowLogger:
         # Current session
         self.current_session_id: Optional[str] = None
         self.session_data: Optional[Dict[str, Any]] = None
+        
+        # GDPR Auto-Redact
+        self.auto_redact = AutoRedact(enabled=config.enable_auto_redact)
         
         logger.info("Shadow Logger initialized")
     
@@ -90,14 +211,15 @@ class ShadowLogger:
         
         return session_id
     
-    def log_transcription(self, text: str, speaker_id: Optional[str] = None, timestamp: Optional[str] = None):
+    def log_transcription(self, text: str, speaker_id: Optional[str] = None, timestamp: Optional[str] = None, vvad_data: Optional[Dict[str, Any]] = None):
         """
-        Log transcription entry
+        Log transcription entry with V-VAD speaker attribution
         
         Args:
             text: Transcribed text
             speaker_id: Speaker identifier (optional)
             timestamp: Timestamp (optional, defaults to now)
+            vvad_data: Visual Voice Activity Detection data (lip movement, active speaker)
         """
         if not self.current_session_id or not self.session_data:
             logger.warning("No active session to log transcription")
@@ -106,10 +228,17 @@ class ShadowLogger:
         if timestamp is None:
             timestamp = datetime.now(timezone.utc).isoformat()
         
+        # GDPR: Redact PII from transcription before storage
+        redacted_text = self.auto_redact.redact_text(text)
+        
         transcription_entry = {
-            "text": text,
+            "text": redacted_text,
             "speaker_id": speaker_id,
-            "timestamp": timestamp
+            "timestamp": timestamp,
+            # Sprint 4: V-VAD speaker attribution
+            "vvad_speaker": vvad_data.get("active_speaker_idx") if vvad_data else None,
+            "lip_movement_score": vvad_data.get("movement_score") if vvad_data else None,
+            "confidence": vvad_data.get("confidence") if vvad_data else None
         }
         
         self.session_data["transcriptions"].append(transcription_entry)
@@ -122,7 +251,7 @@ class ShadowLogger:
         if self.config.auto_save:
             self._save_transcriptions()
         
-        logger.debug(f"Logged transcription: {text[:50]}...")
+        logger.debug(f"Logged transcription: {redacted_text[:50]}...")
     
     def log_entities(self, entities: List[Dict[str, Any]]):
         """
@@ -233,26 +362,47 @@ class ShadowLogger:
         # Save all session data
         self._save_session_data()
         
+        # Sprint 4: Sync to Supabase
+        if SUPABASE_AVAILABLE and supabase_client.is_connected():
+            self._sync_session_to_supabase()
+        
         logger.info(f"Ended shadow logging session: {self.current_session_id}")
         
-        # Return summary
-        session_summary = {
-            "session_id": self.current_session_id,
-            "platform": self.session_data["platform"],
-            "title": self.session_data["title"],
-            "start_time": self.session_data["start_time"],
-            "end_time": self.session_data["end_time"],
-            "transcription_count": len(self.session_data["transcriptions"]),
-            "entity_count": len(self.session_data["entities"]),
-            "participant_count": len(self.session_data["participants"]),
-            "summary": summary
-        }
-        
-        # Clear current session
+        session_summary = self.session_data.copy()
         self.current_session_id = None
         self.session_data = None
         
         return session_summary
+    
+    # ═══════════════════════════════════════════════════════════════
+    # SPRINT 4: SUPABASE SYNC WITH V-VAD SPEAKER ATTRIBUTION
+    # ═══════════════════════════════════════════════════════════════
+    async def _sync_session_to_supabase(self):
+        """Sync session data to Supabase with V-VAD speaker attribution"""
+        if not SUPABASE_AVAILABLE or not supabase_client.is_connected():
+            return
+        
+        try:
+            # Create meeting log
+            meeting_data = {
+                "platform": self.session_data["platform"],
+                "meeting_id": self.session_data["session_id"],
+                "title": self.session_data["title"],
+                "participants": self.session_data["participants"],
+                "start_time": self.session_data["start_time"],
+                "end_time": self.session_data["end_time"],
+                "transcript": "\n".join([t["text"] for t in self.session_data["transcriptions"]]),
+                "entities_extracted": {
+                    "entities": self.session_data["entities"],
+                    # Sprint 4: Include V-VAD speaker attribution
+                    "vvad_attribution": [t.get("vvad_speaker") for t in self.session_data["transcriptions"]]
+                }
+            }
+            
+            await supabase_client.create_meeting_log(meeting_data)
+            logger.info(f"Synced session to Supabase: {self.session_data['session_id']}")
+        except Exception as e:
+            logger.error(f"Error syncing session to Supabase: {e}")
     
     def _generate_summary(self) -> Dict[str, Any]:
         """

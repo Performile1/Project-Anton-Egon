@@ -69,6 +69,8 @@ class SessionGuard:
         self.current_mode: Optional[SessionMode] = None
         self.last_network_test: Optional[NetworkTestResult] = None
         self.is_locked = False
+        self.fallback_image_path: Optional[str] = None  # Local fallback image
+        self.fallback_text = "Connecting to cloud power..."  # Fallback overlay text
         
         # Test servers for ping
         self.test_hosts = [
@@ -255,6 +257,35 @@ class SessionGuard:
             return f"POOR network ({self.last_network_test.ping_ms:.0f}ms) - Local Mode required"
         else:
             return "Network unavailable - Local Mode required"
+    
+    def set_fallback_image(self, image_path: str):
+        """
+        Set local fallback image for cloud failure
+        
+        Args:
+            image_path: Path to fallback image
+        """
+        self.fallback_image_path = image_path
+        logger.info(f"Fallback image set to {image_path}")
+    
+    def trigger_fallback(self) -> Dict[str, Any]:
+        """
+        Trigger local fallback (called when cloud instance fails)
+        
+        Returns:
+            Fallback configuration
+        """
+        logger.warning("Triggering local fallback due to cloud failure")
+        
+        # Switch to local mode
+        self.current_mode = SessionMode.LOCAL
+        
+        return {
+            "mode": "local",
+            "fallback_image": self.fallback_image_path,
+            "overlay_text": self.fallback_text,
+            "reason": "Cloud instance failure - switched to local fallback"
+        }
 
 
 # Singleton instance

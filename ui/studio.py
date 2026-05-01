@@ -55,6 +55,9 @@ class RecordingType(Enum):
     WARDROBE_ACTION = "wardrobe_action"
     VOICE_SENTENCE = "voice_sentence"
     VOICE_PREROLL = "voice_preroll"
+    # Double Capture (Safety: Record each outfit in two versions)
+    WARDROBE_PROFESSIONAL = "wardrobe_professional"  # Professional talking (for voice model)
+    WARDROBE_SILENT_IDLE = "wardrobe_silent_idle"  # Silent idle (natural movements, looking at screen, blinking, adjusting mic)
 
 
 class OutfitID(Enum):
