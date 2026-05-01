@@ -1,0 +1,34 @@
+cpu:
+  cores_logical: 8
+  cores_physical: 4
+  frequency_mhz: 1609.0
+disk_space:
+  free_gb: 283.65
+  total_gb: 475.61
+  used_percent: 40.36
+gpu:
+  error: torch not available
+network:
+  bandwidth: null
+  internet: true
+  ping: null
+  ping_ms: 26.31
+os:
+  machine: AMD64
+  processor: Intel64 Family 6 Model 142 Stepping 12, GenuineIntel
+  release: '11'
+  system: Windows
+  version: 10.0.26100
+python:
+  compiler: MSC v.1943 64 bit (AMD64)
+  implementation: CPython
+  version: 3.13.3
+ram:
+  available_gb: 0.95
+  percent_used: 87.8
+  total_gb: 7.8
+render_mode:
+  mode: CLOUD
+  reason: Low latency internet (26.31ms) detected - Cloud rendering recommended
+vram:
+  error: torch not available

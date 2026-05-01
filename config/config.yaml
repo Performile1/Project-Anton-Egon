@@ -1,0 +1,56 @@
+# Project Anton Egon - Configuration
+# Mood settings and rendering choices
+
+project:
+  name: "Anton Egon"
+  version: "1.0.0"
+  phase: "1"
+
+# Mood Engine Configuration
+mood:
+  default_mood: "neutral"
+  decay_rate: 0.1
+  decay_interval_hours: 2
+  keep_history_days: 30
+  max_history_entries: 100
+  enable_quick_logging: true
+
+# Rendering Configuration
+rendering:
+  mode: "auto"  # auto, local_full, cloud_power, hybrid_placeholder
+  local_full:
+    enable_gpu: true
+    target_fps: 30
+    resolution: "1080p"
+  cloud_power:
+    server_url: "ws://localhost:8080"
+    timeout: 30
+  hybrid_placeholder:
+    enable_gpu: false
+    target_fps: 20
+    resolution: "720p"
+
+# Visual Mood Sync
+visual_mood:
+  enabled: true
+  smile_intensity:
+    neutral: 0.5
+    happy: 0.8
+    irritated: 0.1
+
+# Platform
+platform:
+  default: "teams"
+  supported: ["teams", "google_meet", "zoom", "webex", "slack"]
+
+# Calendar
+calendar:
+  enable_microsoft_graph: false
+  enable_google_calendar: false
+  timezone: "Europe/Stockholm"
+
+# Logging
+logging:
+  level: "INFO"
+  log_dir: "logs"
+  rotation: "10 MB"

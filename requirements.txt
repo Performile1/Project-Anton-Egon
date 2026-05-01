@@ -1,0 +1,64 @@
+# Project Anton Egon - Dependencies
+
+# Core
+python-dotenv==1.0.0
+loguru==0.7.2
+pydantic==2.5.3
+pyyaml==6.0.1
+
+# Phase 1: Foundation & Data Ingestion
+llama-cpp-python==0.2.57
+chromadb==0.4.22
+sentence-transformers==2.2.2
+pypdf==3.17.4
+python-docx==1.1.0
+openpyxl==3.1.2
+
+# Phase 2: Audio & Vision
+# Audio transcription (faster-whisper for Python 3.13 compatibility)
+faster-whisper==1.0.3
+# openai-whisper==20231117  # Has Python 3.13 compatibility issues
+pyaudio==0.2.14
+opencv-python==4.9.0.80
+ultralytics==8.1.0
+deepface==0.0.79
+mss==9.0.1
+torch==2.1.0
+torchvision==0.16.0
+
+# Phase 3: Cognitive Logic
+# No additional dependencies (uses existing)
+
+# Phase 4: Synthesis & Wardrobe
+edge-tts==6.1.9
+# pyvirtualcam==0.6.0  # Optional: for OBS virtual camera (Linux/Mac)
+# pyvirtualcam-win==0.6.0  # Optional: for OBS virtual camera (Windows)
+
+# Phase 5: Integration & Fail-safe
+keyboard==0.13.5
+
+# Calendar Integration
+msal==1.24.0
+google-api-python-client==2.108.0
+google-auth-httplib2==0.1.1
+google-auth-oauthlib==1.1.0
+pytz==2024.1
+
+# Web Dashboard
+fastapi==0.109.0
+uvicorn==0.27.0
+websockets==12.0
+
+# Phase 7: Executive Polish & Performance
+psutil==5.9.7
+GPUtil==1.4.0
+aiohttp==3.9.3
+
+# Phase 8: Streaming Pipeline & Latency
+aiortc==1.9.0
+
+# Phase 11: Active Facilitator
+mediapipe==0.10.9
+PyMuPDF==1.23.8
+pyautogui==0.9.54
+pytesseract==0.3.10

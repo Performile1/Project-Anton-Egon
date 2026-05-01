@@ -1,0 +1,145 @@
+# Project Anton Egon - Configuration
+# Mood settings and rendering choices
+
+project:
+  name: "Anton Egon"
+  version: "1.0.0"
+  phase: "1"
+
+# Mood Engine Configuration
+mood:
+  # Default mood when system starts
+  default_mood: "neutral"
+  
+  # Decay settings
+  decay_rate: 0.1              # How fast mood decays (0.0-1.0)
+  decay_interval_hours: 2      # How often to apply decay
+  
+  # Mood history
+  keep_history_days: 30        # How long to keep mood history
+  max_history_entries: 100      # Maximum mood events to keep
+  
+  # Quick logging triggers (voice/text)
+  enable_quick_logging: true
+  logging_shortcuts:
+    - "I'm stressed"
+    - "I'm happy"
+    - "I'm irritated"
+    - "I'm tired"
+    - "I'm focused"
+    - "I'm relaxed"
+
+# Rendering Configuration
+rendering:
+  # Render mode selection
+  mode: "auto"                  # auto, local_full, cloud_power, hybrid_placeholder
+  
+  # Local Full (RTX Mode)
+  local_full:
+    enable_gpu: true
+    target_fps: 30
+    resolution: "1080p"
+    liveportrait_enabled: true
+    base_video_path: "assets/video/outfits/outfit_shirt_idle.mp4"
+  
+  # Cloud Power (Thin Client Mode)
+  cloud_power:
+    server_url: "ws://localhost:8080"
+    timeout: 30
+    max_reconnect_attempts: 5
+    resolution: "1080p"
+    enable_webrtc: true
+  
+  # Hybrid Placeholder (Emergency Mode)
+  hybrid_placeholder:
+    enable_gpu: false
+    target_fps: 20
+    resolution: "720p"
+    fallback_mode: "cpu"
+
+# System Detection
+system:
+  # Auto-detect capabilities on startup
+  auto_detect: true
+  
+  # Minimum requirements for local rendering
+  min_vram_gb: 8
+  min_ram_gb: 16
+  min_ping_ms: 100
+  
+  # Bandwidth monitoring
+  bandwidth_monitor:
+    enabled: true
+    target_ping_ms: 100
+    max_ping_ms: 300
+    auto_downgrade: true
+
+# Visual Mood Sync
+visual_mood:
+  # Enable visual adjustments based on mood
+  enabled: true
+  
+  # Expression parameters
+  smile_intensity:
+    neutral: 0.5
+    happy: 0.8
+    irritated: 0.1
+    stressed: 0.2
+    tired: 0.3
+    focused: 0.4
+    relaxed: 0.6
+  
+  eye_openness:
+    neutral: 0.5
+    happy: 0.6
+    irritated: 0.4
+    stressed: 0.6
+    tired: 0.4
+    focused: 0.7
+    relaxed: 0.5
+  
+  brow_tension:
+    neutral: 0.5
+    happy: 0.2
+    irritated: 0.8
+    stressed: 0.7
+    tired: 0.3
+    focused: 0.5
+    relaxed: 0.3
+
+# Platform Configuration
+platform:
+  default: "teams"
+  supported:
+    - "teams"
+    - "google_meet"
+    - "zoom"
+    - "webex"
+    - "slack"
+  auto_detect: false
+
+# Calendar Configuration
+calendar:
+  enable_microsoft_graph: false
+  enable_google_calendar: false
+  timezone: "Europe/Stockholm"
+  check_interval_minutes: 15
+  look_ahead_hours: 24
+
+# Logging
+logging:
+  level: "INFO"
+  log_dir: "logs"
+  rotation: "10 MB"
+  retention: "30 days"
+
+# Orchestrator
+orchestrator:
+  loop_interval: 0.1
+  enable_audio: true
+  enable_vision: true
+  enable_emotion: true
+  enable_rag: true
+  enable_calendar_sync: false
+  enable_mood_engine: true
+  target_fps: 20

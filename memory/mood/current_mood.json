@@ -1,0 +1,16 @@
+{
+  "current_mood": "stressed",
+  "last_update": "2026-04-29T09:31:59.266931",
+  "mood_history": [
+    {
+      "mood": "happy",
+      "description": "Had a great morning",
+      "timestamp": "2026-04-29T09:31:59.241958"
+    },
+    {
+      "mood": "stressed",
+      "description": "I'm stressed about the deadline",
+      "timestamp": "2026-04-29T09:31:59.266919"
+    }
+  ]
+}

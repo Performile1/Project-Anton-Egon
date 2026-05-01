@@ -1,0 +1,90 @@
+{
+  "name": "anton-egon",
+  "version": "1.2.0",
+  "description": "Anton Egon - AI Meeting Representative",
+  "main": "main.js",
+  "author": "Rickard",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev",
+    "build:win": "electron-builder --win --x64",
+    "build:mac": "electron-builder --mac --universal",
+    "build:all": "electron-builder -mwl"
+  },
+  "dependencies": {
+    "electron-store": "^8.1.0",
+    "electron-localshortcut": "^3.2.1",
+    "node-notifier": "^10.0.1"
+  },
+  "devDependencies": {
+    "electron": "^28.0.0",
+    "electron-builder": "^24.9.1"
+  },
+  "build": {
+    "appId": "com.antonegon.app",
+    "productName": "Anton Egon",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "renderer/**/*",
+      "../ui/**/*",
+      "../core/**/*",
+      "../audio/**/*",
+      "../vision/**/*",
+      "../video/**/*",
+      "../integration/**/*",
+      "../memory/**/*",
+      "../assets/**/*",
+      "../vault/**/*",
+      "../config/**/*",
+      "../requirements.txt"
+    ],
+    "extraResources": [
+      {
+        "from": "../models",
+        "to": "models"
+      },
+      {
+        "from": "../logs",
+        "to": "logs"
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        }
+      ],
+      "icon": "build/icon.ico",
+      "artifactName": "AntonEgon-${version}-setup.${ext}"
+    },
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": ["universal"]
+        }
+      ],
+      "icon": "build/icon.icns",
+      "category": "public.app-category.business",
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.plist"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "perMachine": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Anton Egon"
+    }
+  }
+}

@@ -1,0 +1,62 @@
+{
+  "project": "Anton Egon",
+  "version": "1.0.0",
+  "phase": "1",
+  "llm": {
+    "model_path": "models/llama-3-8b-instruct-q4_k_m.gguf",
+    "n_ctx": 2048,
+    "n_gpu_layers": -1,
+    "verbose": false
+  },
+  "embeddings": {
+    "model": "sentence-transformers/all-MiniLM-L6-v2",
+    "dimension": 384
+  },
+  "chromadb": {
+    "persist_directory": "memory/chroma_db",
+    "collection_prefix": "anton_egon"
+  },
+  "vault": {
+    "base_dir": "vault",
+    "categories": [
+      "internal",
+      "client",
+      "general"
+    ],
+    "supported_formats": [
+      ".pdf",
+      ".docx",
+      ".xlsx",
+      ".xls"
+    ]
+  },
+  "ingestion": {
+    "chunk_size": 500,
+    "chunk_overlap": 50
+  },
+  "orchestrator": {
+    "loop_interval": 0.1,
+    "enable_audio": true,
+    "enable_vision": true,
+    "enable_emotion": true,
+    "enable_rag": true,
+    "target_fps": 20,
+    "platform": "teams",
+    "enable_calendar_sync": false,
+    "calendar_timezone": "Europe/Stockholm",
+    "calendar_check_interval": 15
+  },
+  "calendar": {
+    "enable_microsoft_graph": false,
+    "enable_google_calendar": false,
+    "timezone": "Europe/Stockholm",
+    "check_interval_minutes": 15,
+    "look_ahead_hours": 24
+  },
+  "logging": {
+    "level": "INFO",
+    "log_dir": "logs",
+    "rotation": "10 MB",
+    "retention": "30 days"
+  }
+}

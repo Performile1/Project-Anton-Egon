@@ -1,0 +1,69 @@
+# Previous Meeting Notes
+
+**Meeting Date:** [DATE]
+**Meeting Type:** [CLIENT INTERNAL/PROJECT REVIEW/etc.]
+
+---
+
+## Summary
+
+[Brief summary of what was discussed and decided]
+
+---
+
+## Key Decisions Made
+
+1. **[Decision 1]**
+   - Details: [What was decided]
+   - Owner: [Who is responsible]
+   - Deadline: [When it needs to be done]
+
+2. **[Decision 2]**
+   - Details: [What was decided]
+   - Owner: [Who is responsible]
+   - Deadline: [When it needs to be done]
+
+3. **[Decision 3]**
+   - Details: [What was decided]
+   - Owner: [Who is responsible]
+   - Deadline: [When it needs to be done]
+
+---
+
+## Action Items
+
+- [ ] [Action item 1] - [Owner] - [Deadline]
+- [ ] [Action item 2] - [Owner] - [Deadline]
+- [ ] [Action item 3] - [Owner] - [Deadline]
+
+---
+
+## Open Questions
+
+- [Question 1 that needs follow-up]
+- [Question 2 that needs follow-up]
+- [Question 3 that needs follow-up]
+
+---
+
+## Client Feedback
+
+[Any feedback or concerns raised by the client]
+
+---
+
+## Topics to Avoid in Future Meetings
+
+- [Sensitive topic 1]
+- [Sensitive topic 2]
+- [Sensitive topic 3]
+
+---
+
+## Next Steps
+
+[What needs to happen before the next meeting]
+
+---
+
+*These notes are loaded by the agent to maintain continuity across meetings and ensure consistency in responses.*
