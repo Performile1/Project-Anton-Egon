@@ -221,7 +221,7 @@ class WebDashboard:
         @self.app.get("/api/agenda")
         async def get_agenda():
             """Get daily agenda"""
-            return self.agenda
+            return self.daily_agenda
         
         @self.app.get("/api/inbox/stats")
         async def get_inbox_stats():
@@ -3057,6 +3057,27 @@ class WebDashboard:
             </div>
             <div class="controls-row" style="margin-top:12px;">
                 <button class="btn btn-accent" onclick="saveFeatureToggles()">Save Toggles</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ══════ TAB: HELP ══════ -->
+<div id="tab-help" class="tab-content">
+    <div class="grid" style="max-width:1200px;margin:0 auto;">
+        <div class="card" style="grid-column:1/-1;">
+            <h3>Help & Troubleshooting</h3>
+            <div style="color:var(--muted);line-height:1.8;">
+                <p><strong>Getting Started:</strong> Use the Setup tab to configure your API keys and external services.</p>
+                <p><strong>Studio:</strong> Record video clips with teleprompter guidance. Select a recording mode and press Record.</p>
+                <p><strong>Harvest:</strong> Configure which meeting platform Anton Egon should monitor.</p>
+                <p><strong>Dashboard:</strong> Real-time overview of agent status, agenda, and system logs.</p>
+                <p style="margin-top:16px;"><strong>Common Issues:</strong></p>
+                <ul style="margin-left:20px;">
+                    <li>Camera not working? Check browser permissions for camera/microphone access.</li>
+                    <li>API errors? Verify your API keys in Settings tab.</li>
+                    <li>Server not starting? Check that Python 3.11 is installed and venv is created.</li>
+                </ul>
             </div>
         </div>
     </div>
