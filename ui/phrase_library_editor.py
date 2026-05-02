@@ -51,6 +51,7 @@ class Phrase:
     frequency: float = 1.0  # Usage frequency (0.0 - 1.0)
     created_at: str = field(default_factory=lambda: datetime.now().isoformat())
     notes: str = ""
+    audio_file: str = ""
     
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)

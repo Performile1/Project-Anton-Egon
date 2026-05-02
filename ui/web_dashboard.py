@@ -8,8 +8,9 @@ import asyncio
 from typing import Optional, Dict, Any, List
 from datetime import datetime, timezone
 from enum import Enum
+from pathlib import Path
 
-from fastapi import FastAPI, Request, Response, Form, WebSocket
+from fastapi import FastAPI, Request, Response, Form, WebSocket, UploadFile, File
 from fastapi.responses import HTMLResponse, JSONResponse
 from core.unified_inbox import unified_inbox
 from ui.phrase_library_editor import phrase_library
@@ -275,20 +276,68 @@ class WebDashboard:
                 return [p.to_dict() for p in phrase_library.get_phrases_by_category(category)]
         
         @self.app.post("/api/phrases")
-        async def add_phrase(phrase_data: Dict[str, Any]):
-            """Add new phrase"""
+        async def add_phrase(
+            text: str = Form(""),
+            category: str = Form("fillers"),
+            trigger_mood: str = Form("any"),
+            frequency: str = Form("0.5"),
+            notes: str = Form(""),
+            audio: Optional[UploadFile] = File(None)
+        ):
+            """Add new phrase with optional audio"""
             import uuid
             from ui.phrase_library_editor import Phrase
+            phrase_id = str(uuid.uuid4())
+            
+            audio_file = None
+            if audio and audio.filename:
+                audio_dir = Path("assets/audio/phrases")
+                audio_dir.mkdir(parents=True, exist_ok=True)
+                audio_file = str(audio_dir / f"{phrase_id}.webm")
+                content = await audio.read()
+                with open(audio_file, "wb") as f:
+                    f.write(content)
+            
             phrase = Phrase(
-                id=str(uuid.uuid4()),
-                text=phrase_data.get("text", ""),
-                category=phrase_data.get("category", "fillers"),
-                trigger_mood=phrase_data.get("trigger_mood", "any"),
-                frequency=phrase_data.get("frequency", 0.5),
-                notes=phrase_data.get("notes", "")
+                id=phrase_id,
+                text=text or "(audio only)",
+                category=category,
+                trigger_mood=trigger_mood,
+                frequency=float(frequency),
+                notes=notes
             )
+            if audio_file:
+                phrase.audio_file = audio_file
             success = phrase_library.add_phrase(phrase)
-            return {"status": "success" if success else "failed"}
+            return {"status": "success" if success else "failed", "id": phrase_id}
+        
+        @self.app.post("/api/phrases/{phrase_id}/audio")
+        async def upload_phrase_audio(phrase_id: str, audio: UploadFile = File(...)):
+            """Upload audio for existing phrase"""
+            if audio and audio.filename:
+                audio_dir = Path("assets/audio/phrases")
+                audio_dir.mkdir(parents=True, exist_ok=True)
+                audio_file = str(audio_dir / f"{phrase_id}.webm")
+                content = await audio.read()
+                with open(audio_file, "wb") as f:
+                    f.write(content)
+                # Update phrase with audio path
+                for pid, p in phrase_library.phrases.items():
+                    if pid == phrase_id:
+                        p.audio_file = audio_file
+                        phrase_library._save_library()
+                        break
+                return {"status": "success"}
+            return {"status": "error", "message": "Invalid file"}
+        
+        @self.app.get("/api/phrases/{phrase_id}/audio")
+        async def get_phrase_audio(phrase_id: str):
+            """Get audio file for a phrase"""
+            from fastapi.responses import FileResponse
+            audio_path = Path(f"assets/audio/phrases/{phrase_id}.webm")
+            if audio_path.exists():
+                return FileResponse(str(audio_path), media_type="audio/webm")
+            return Response(status_code=404)
         
         @self.app.post("/api/phrases/import")
         async def import_default_phrases():
@@ -2456,6 +2505,18 @@ class WebDashboard:
             <div style="margin-top:12px;">
                 <label style="font-size:.85em;color:var(--muted);">Notes</label>
                 <input type="text" id="phrase-notes" placeholder="Optional notes...">
+            </div>
+            <!-- Audio Recording -->
+            <div style="margin-top:12px;padding:12px;background:var(--border);border-radius:6px;">
+                <label style="font-size:.85em;color:var(--muted);">Voice Recording (optional)</label>
+                <div class="controls-row" style="margin-top:6px;">
+                    <button class="btn btn-rec" id="phrase-rec-btn" onclick="togglePhraseRecording()" style="padding:8px 16px;font-size:.85em;">
+                        🎙️ Record
+                    </button>
+                    <span id="phrase-rec-status" style="font-size:.82em;color:var(--muted);">No recording</span>
+                    <audio id="phrase-audio-preview" controls style="height:32px;display:none;"></audio>
+                    <button class="btn btn-outline" id="phrase-audio-clear" onclick="clearPhraseRecording()" style="padding:4px 10px;font-size:.8em;display:none;">✕ Clear</button>
+                </div>
             </div>
             <div style="margin-top:12px;">
                 <button class="btn btn-accent" onclick="addPhrase()">Add Phrase</button>
@@ -4655,7 +4716,9 @@ function renderPhrases(phrases) {
                 <div style="font-size:.8em;color:var(--muted);">Freq: ${p.frequency}</div>
             </div>
             ${p.notes ? `<div style="margin-top:8px;font-size:.85em;color:var(--muted);">${p.notes}</div>` : ''}
-            <div style="margin-top:8px;display:flex;gap:8px;">
+            ${p.audio_file ? `<div style="margin-top:8px;"><audio controls src="/api/phrases/${p.id}/audio" style="height:28px;"></audio></div>` : '<div style="margin-top:4px;font-size:.75em;color:var(--muted);">No audio recorded</div>'}
+            <div style="margin-top:8px;display:flex;gap:8px;align-items:center;">
+                <button class="btn btn-rec" style="padding:4px 10px;font-size:.8em;" onclick="recordPhraseAudio('${p.id}', this)">🎙️ ${p.audio_file ? 'Re-record' : 'Record'}</button>
                 <button class="btn" style="padding:4px 8px;font-size:.8em;" onclick="editPhrase('${p.id}')">Edit</button>
                 <button class="btn" style="padding:4px 8px;font-size:.8em;" onclick="deletePhrase('${p.id}')">Delete</button>
             </div>
@@ -4663,23 +4726,108 @@ function renderPhrases(phrases) {
     `).join('');
 }
 
-async function addPhrase() {
-    const phrase = {
-        text: document.getElementById('phrase-text').value,
-        category: document.getElementById('phrase-category').value,
-        trigger_mood: document.getElementById('phrase-mood').value,
-        frequency: parseFloat(document.getElementById('phrase-frequency').value),
-        notes: document.getElementById('phrase-notes').value
-    };
+// Phrase audio recording
+let phraseMediaStream = null, phraseRecorder = null, phraseAudioBlob = null;
+
+async function togglePhraseRecording() {
+    const btn = document.getElementById('phrase-rec-btn');
+    const status = document.getElementById('phrase-rec-status');
     
-    await fetch('/api/phrases', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(phrase)
-    });
+    if (phraseRecorder && phraseRecorder.state === 'recording') {
+        phraseRecorder.stop();
+        btn.textContent = '🎙️ Record';
+        btn.style.background = 'var(--danger)';
+        status.textContent = 'Processing...';
+        return;
+    }
+    
+    try {
+        phraseMediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        phraseRecorder = new MediaRecorder(phraseMediaStream, { mimeType: 'audio/webm' });
+        const chunks = [];
+        
+        phraseRecorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
+        phraseRecorder.onstop = () => {
+            phraseAudioBlob = new Blob(chunks, { type: 'audio/webm' });
+            const url = URL.createObjectURL(phraseAudioBlob);
+            const preview = document.getElementById('phrase-audio-preview');
+            preview.src = url;
+            preview.style.display = 'inline-block';
+            document.getElementById('phrase-audio-clear').style.display = 'inline-block';
+            status.textContent = 'Recording ready';
+            status.style.color = 'var(--accent)';
+            phraseMediaStream.getTracks().forEach(t => t.stop());
+        };
+        
+        phraseRecorder.start();
+        btn.textContent = '⏹️ Stop';
+        btn.style.background = '#c0392b';
+        status.textContent = 'Recording...';
+        status.style.color = 'var(--danger)';
+    } catch (e) {
+        status.textContent = 'Mic error: ' + e.message;
+        status.style.color = 'var(--danger)';
+    }
+}
+
+function clearPhraseRecording() {
+    phraseAudioBlob = null;
+    document.getElementById('phrase-audio-preview').style.display = 'none';
+    document.getElementById('phrase-audio-clear').style.display = 'none';
+    document.getElementById('phrase-rec-status').textContent = 'No recording';
+    document.getElementById('phrase-rec-status').style.color = 'var(--muted)';
+}
+
+async function addPhrase() {
+    const text = document.getElementById('phrase-text').value;
+    if (!text && !phraseAudioBlob) { alert('Enter phrase text or record audio'); return; }
+    
+    const formData = new FormData();
+    formData.append('text', text || '(audio only)');
+    formData.append('category', document.getElementById('phrase-category').value);
+    formData.append('trigger_mood', document.getElementById('phrase-mood').value);
+    formData.append('frequency', document.getElementById('phrase-frequency').value);
+    formData.append('notes', document.getElementById('phrase-notes').value);
+    if (phraseAudioBlob) {
+        formData.append('audio', phraseAudioBlob, 'phrase.webm');
+    }
+    
+    await fetch('/api/phrases', { method: 'POST', body: formData });
+    
+    // Reset form
+    document.getElementById('phrase-text').value = '';
+    document.getElementById('phrase-notes').value = '';
+    clearPhraseRecording();
     
     loadPhraseStats();
     loadPhrases(currentPhraseFilter);
+}
+
+// Record audio for existing phrase
+let activePhraseRecordId = null, activePhraseRecorder = null;
+async function recordPhraseAudio(phraseId, btn) {
+    if (activePhraseRecorder && activePhraseRecorder.state === 'recording') {
+        activePhraseRecorder.stop();
+        btn.textContent = '🎙️ Record';
+        return;
+    }
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        activePhraseRecordId = phraseId;
+        activePhraseRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+        const chunks = [];
+        activePhraseRecorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
+        activePhraseRecorder.onstop = async () => {
+            const blob = new Blob(chunks, { type: 'audio/webm' });
+            const fd = new FormData();
+            fd.append('audio', blob, 'phrase.webm');
+            await fetch('/api/phrases/' + activePhraseRecordId + '/audio', { method: 'POST', body: fd });
+            stream.getTracks().forEach(t => t.stop());
+            loadPhrases(currentPhraseFilter);
+        };
+        activePhraseRecorder.start();
+        btn.textContent = '⏹️ Stop';
+    } catch (e) { alert('Mic error: ' + e.message); }
 }
 
 async function importDefaultPhrases() {
