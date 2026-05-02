@@ -4023,13 +4023,7 @@ async function unlockPremiumPranks() {
     }
 }
 
-// Load store balance when tab is opened
-document.addEventListener('DOMContentLoaded', () => {
-    const storeTab = document.querySelector('button[onclick="switchTab(\'store\')"]');
-    if (storeTab) {
-        storeTab.addEventListener('click', loadStoreBalance);
-    }
-});
+// Store balance loaded via switchTab master function
 
 // SHADOWING UI (Fas 23: Ghostwriter Mode)
 // ═══════════════════════════════════════════════════════════════
@@ -4590,6 +4584,7 @@ function switchTab(name, evt) {
     if (name === 'phrases') { loadPhraseStats(); loadPhrases(); }
     if (name === 'chaos') { loadProps(); loadOverlays(); }
     if (name === 'harvester') { loadHarvesterStatus(); }
+    if (name === 'store') { if (typeof loadStoreBalance === 'function') loadStoreBalance(); }
     if (name === 'flaws') { if (typeof loadFlawsConfig === 'function') loadFlawsConfig(); }
     if (name === 'setup') { if (typeof detectPlatform === 'function') detectPlatform(); }
     if (name === 'health') { if (typeof loadQAReport === 'function') loadQAReport(); }
