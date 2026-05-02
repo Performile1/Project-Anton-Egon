@@ -4590,6 +4590,11 @@ async function saveFeatureToggles() {
     // TODO: Send to backend
     alert('Feature toggles saved (placeholder - backend integration needed)');
 }
+
+// Initialize first tab on page load
+document.addEventListener('DOMContentLoaded', function() {
+    switchTab('dashboard');
+});
 </script>
 </body>
 </html>
