@@ -34,8 +34,48 @@ let miniPlayerWindow = null;
 let pythonProcess = null;
 let tray = null;
 let isBackendRunning = false;
+let isFirstRun = store.get('firstRun', true);
 
 // ─── PYTHON BACKEND SPAWNING ───────────────────────────────────────
+
+async function runFirstTimeSetup() {
+    if (!isFirstRun) return;
+    
+    console.log('Running first-time setup...');
+    
+    const requirementsPath = path.join(__dirname, '..', 'requirements.txt');
+    const pipInstallCmd = process.platform === 'win32' 
+        ? 'pip install -r requirements.txt'
+        : 'pip3 install -r requirements.txt';
+    
+    return new Promise((resolve) => {
+        const setupProcess = exec(pipInstallCmd, {
+            cwd: path.join(__dirname, '..'),
+            windowsHide: true
+        });
+        
+        setupProcess.stdout.on('data', (data) => {
+            console.log(`[Setup] ${data}`);
+        });
+        
+        setupProcess.stderr.on('data', (data) => {
+            console.error(`[Setup Error] ${data}`);
+        });
+        
+        setupProcess.on('close', (code) => {
+            console.log(`Setup completed with code ${code}`);
+            store.set('firstRun', false);
+            resolve();
+        });
+        
+        // Timeout after 10 minutes
+        setTimeout(() => {
+            console.log('Setup timed out, continuing anyway');
+            store.set('firstRun', false);
+            resolve();
+        }, 600000);
+    });
+}
 
 function spawnPythonBackend() {
     console.log('Spawning Python backend...');
@@ -356,8 +396,14 @@ function showNotification(title, message) {
 
 // ─── APP LIFECYCLE ─────────────────────────────────────────────────
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
     console.log('Anton Egon starting...');
+    
+    // Run first-time setup if needed (background)
+    if (isFirstRun) {
+        showNotification('Anton Egon', 'Running initial setup. This may take a few minutes...');
+        await runFirstTimeSetup();
+    }
     
     // Spawn Python backend
     spawnPythonBackend();
