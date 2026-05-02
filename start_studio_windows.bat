@@ -96,6 +96,7 @@ echo Press Ctrl+C to stop the server
 echo.
 
 REM Start the dashboard
+set PYTHONPATH=%~dp0
 python ui\web_dashboard.py
 
 pause
