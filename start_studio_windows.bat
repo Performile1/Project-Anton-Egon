@@ -39,7 +39,7 @@ call venv\Scripts\activate.bat
 
 REM Upgrade pip
 echo Upgrading pip...
-pip install --upgrade pip --quiet
+python -m pip install --upgrade pip --quiet
 
 REM Check if requirements.txt exists
 if exist "requirements.txt" (
@@ -58,14 +58,14 @@ if not exist ".env" (
     (
         echo # Anton Egon Configuration
         echo # Copy this file and fill in your values
-        echo.
+        echo:
         echo # Supabase Configuration
         echo SUPABASE_URL=your_supabase_url_here
         echo SUPABASE_SERVICE_ROLE_KEY=your_service_role_key_here
-        echo.
-        echo # OpenAI API (optional, for fallback)
+        echo:
+        echo # OpenAI API ^(optional, for fallback^)
         echo OPENAI_API_KEY=your_openai_key_here
-        echo.
+        echo:
         echo # Web Dashboard Configuration
         echo DASHBOARD_HOST=0.0.0.0
         echo DASHBOARD_PORT=8000
