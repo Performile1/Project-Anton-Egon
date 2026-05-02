@@ -1342,22 +1342,22 @@ class WebDashboard:
 
 <!-- ══════ TAB BAR ══════ -->
 <div class="tab-bar">
-    <button class="tab-btn" onclick="switchTab('setup')" style="background:var(--accent);color:#0f0f1a;">⚙️ Setup</button>
-    <button class="tab-btn active" onclick="switchTab('dashboard')">Dashboard</button>
-    <button class="tab-btn" onclick="switchTab('inbox')">Unified Inbox</button>
-    <button class="tab-btn" onclick="switchTab('phrases')">Phrase Library</button>
-    <button class="tab-btn" onclick="switchTab('chaos')">Chaos Dashboard</button>
-    <button class="tab-btn" onclick="switchTab('flaws')">Human Flaws</button>
-    <button class="tab-btn" onclick="switchTab('compute')">Compute & Power</button>
-    <button class="tab-btn" onclick="switchTab('store')">🛒 Anton Store</button>
-    <button class="tab-btn" onclick="switchTab('shadowing')">👻 Shadowing</button>
-    <button class="tab-btn" onclick="switchTab('biometrics')">🧬 Biometrics</button>
-    <button class="tab-btn" onclick="switchTab('turing')">🎭 Turing Test</button>
-    <button class="tab-btn" onclick="switchTab('health')">System Health</button>
-    <button class="tab-btn" onclick="switchTab('studio')">The Studio</button>
-    <button class="tab-btn" onclick="switchTab('harvester')">Active Harvest</button>
-    <button class="tab-btn" onclick="switchTab('settings')">Settings</button>
-    <button class="tab-btn" onclick="switchTab('help')">❓ Help</button>
+    <button class="tab-btn" onclick="switchTab('setup', event)" style="background:var(--accent);color:#0f0f1a;">⚙️ Setup</button>
+    <button class="tab-btn active" onclick="switchTab('dashboard', event)">Dashboard</button>
+    <button class="tab-btn" onclick="switchTab('inbox', event)">Unified Inbox</button>
+    <button class="tab-btn" onclick="switchTab('phrases', event)">Phrase Library</button>
+    <button class="tab-btn" onclick="switchTab('chaos', event)">Chaos Dashboard</button>
+    <button class="tab-btn" onclick="switchTab('flaws', event)">Human Flaws</button>
+    <button class="tab-btn" onclick="switchTab('compute', event)">Compute & Power</button>
+    <button class="tab-btn" onclick="switchTab('store', event)">🛒 Anton Store</button>
+    <button class="tab-btn" onclick="switchTab('shadowing', event)">👻 Shadowing</button>
+    <button class="tab-btn" onclick="switchTab('biometrics', event)">🧬 Biometrics</button>
+    <button class="tab-btn" onclick="switchTab('turing', event)">🎭 Turing Test</button>
+    <button class="tab-btn" onclick="switchTab('health', event)">System Health</button>
+    <button class="tab-btn" onclick="switchTab('studio', event)">The Studio</button>
+    <button class="tab-btn" onclick="switchTab('harvester', event)">Active Harvest</button>
+    <button class="tab-btn" onclick="switchTab('settings', event)">Settings</button>
+    <button class="tab-btn" onclick="switchTab('help', event)">❓ Help</button>
 </div>
 
 <!-- ══════ TAB 0: SETUP WIZARD ══════ -->
@@ -3057,14 +3057,7 @@ class WebDashboard:
 // ═══════════════════════════════════════════════════════════════
 // TAB SWITCHING
 // ═══════════════════════════════════════════════════════════════
-function switchTab(name) {
-    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-    document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
-    document.getElementById('tab-' + name).classList.add('active');
-    event.target.classList.add('active');
-    if (name === 'studio') { initStudio(); loadProgress(); }
-    if (name === 'harvester') { loadHarvesterStatus(); }
-}
+// switchTab defined later in the file
 
 // ═══════════════════════════════════════════════════════════════
 // DASHBOARD (existing polling)
@@ -4605,15 +4598,16 @@ async function replyToMessage(messageId) {
 }
 
 // Load inbox when tab is activated
-function switchTab(name) {
+function switchTab(name, evt) {
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
     document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
     document.getElementById('tab-' + name).classList.add('active');
-    event.target.classList.add('active');
+    if (evt && evt.target) evt.target.classList.add('active');
     if (name === 'studio') { initStudio(); loadProgress(); }
     if (name === 'inbox') { loadInboxStats(); filterInbox('all'); }
     if (name === 'phrases') { loadPhraseStats(); loadPhrases(); }
     if (name === 'chaos') { loadProps(); loadOverlays(); }
+    if (name === 'harvester') { loadHarvesterStatus(); }
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -4913,7 +4907,15 @@ async function saveFeatureToggles() {
 
 // Initialize first tab on page load
 document.addEventListener('DOMContentLoaded', function() {
-    switchTab('dashboard');
+    // Activate dashboard tab content
+    document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+    const dashTab = document.getElementById('tab-dashboard');
+    if (dashTab) dashTab.classList.add('active');
+    // Activate dashboard tab button
+    document.querySelectorAll('.tab-btn').forEach(b => {
+        b.classList.remove('active');
+        if (b.textContent.trim().startsWith('Dashboard')) b.classList.add('active');
+    });
 });
 </script>
 </body>
