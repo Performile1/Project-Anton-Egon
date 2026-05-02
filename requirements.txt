@@ -70,4 +70,5 @@ stripe==7.14.0
 supabase==2.5.0
 
 # Safety Measures
-numpy==1.26.4
+# numpy==1.26.4  # Requires compilation on Windows - updated to 2.0+ with pre-built wheels
+numpy==2.1.3
