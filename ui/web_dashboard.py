@@ -4323,8 +4323,6 @@ async function purchaseCredits() {
     }
 }
 
-let biometricsCameraStream = null;
-
 async function startBiometricsCamera() {
     try {
         biometricsCameraStream = await navigator.mediaDevices.getUserMedia({ video: true });
