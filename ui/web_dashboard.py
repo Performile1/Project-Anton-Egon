@@ -3479,14 +3479,7 @@ async function rollJoinDice() {
     }
 }
 
-// Load config when tab is opened
-const originalSwitchTab2 = switchTab;
-switchTab = function(tabId) {
-    originalSwitchTab2(tabId);
-    if (tabId === 'flaws') {
-        loadFlawsConfig();
-    }
-};
+// Flaws config loaded via switchTab master function
 
 async function loadFlawsConfig() {
     try {
@@ -3791,18 +3784,7 @@ async function testAllConnections() {
     await testTailscaleConnection();
 }
 
-// Hook into tab switching for all tabs
-const originalSwitchTab = switchTab;
-switchTab = function(tabId) {
-    originalSwitchTab(tabId);
-    if (tabId === 'setup') {
-        detectPlatform();
-    } else if (tabId === 'health') {
-        loadQAReport();
-    } else if (tabId === 'turing') {
-        initTuringMirror();
-    }
-};
+// Setup/health/turing hooks loaded via switchTab master function
 
 // ═══════════════════════════════════════════════════════════════
 // SYSTEM HEALTH (Phase 18)
@@ -3890,14 +3872,7 @@ async function stopStressTest() {
     }
 }
 
-// Hook into tab switching
-const originalSwitchTab = switchTab;
-switchTab = function(tabId) {
-    originalSwitchTab(tabId);
-    if (tabId === 'health') {
-        loadQAReport();
-    }
-};
+// Health hook loaded via switchTab master function
 
 // Update ghost opacity in real-time
 document.addEventListener('DOMContentLoaded', () => {
@@ -4606,7 +4581,7 @@ async function replyToMessage(messageId) {
     alert('Reply modal coming soon');
 }
 
-// Load inbox when tab is activated
+// Master tab switching function
 function switchTab(name, evt) {
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
     document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
@@ -4617,6 +4592,10 @@ function switchTab(name, evt) {
     if (name === 'phrases') { loadPhraseStats(); loadPhrases(); }
     if (name === 'chaos') { loadProps(); loadOverlays(); }
     if (name === 'harvester') { loadHarvesterStatus(); }
+    if (name === 'flaws') { if (typeof loadFlawsConfig === 'function') loadFlawsConfig(); }
+    if (name === 'setup') { if (typeof detectPlatform === 'function') detectPlatform(); }
+    if (name === 'health') { if (typeof loadQAReport === 'function') loadQAReport(); }
+    if (name === 'turing') { if (typeof initTuringMirror === 'function') initTuringMirror(); }
 }
 
 // ═══════════════════════════════════════════════════════════════
