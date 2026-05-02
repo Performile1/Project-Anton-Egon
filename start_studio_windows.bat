@@ -44,12 +44,13 @@ pip install --upgrade pip --quiet
 REM Check if requirements.txt exists
 if exist "requirements.txt" (
     echo Installing dependencies from requirements.txt...
-    REM Install pymupdf with pre-built wheel
+    REM Install packages with pre-built wheels first
     echo Installing pymupdf with pre-built wheel...
     pip install pymupdf==1.27.2.3 --only-binary pymupdf --quiet
-    REM Install aiohttp with pre-built wheel
     echo Installing aiohttp with pre-built wheel...
     pip install aiohttp==3.11.11 --only-binary aiohttp --quiet
+    echo Installing pydantic with pre-built wheel...
+    pip install pydantic==2.10.5 --only-binary pydantic --quiet
     REM Install remaining dependencies (skip packages requiring compilation)
     pip install -r requirements.txt --quiet
     echo [OK] Dependencies installed
