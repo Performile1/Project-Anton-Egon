@@ -104,6 +104,104 @@ class WebDashboard:
             except Exception as e:
                 logger.error(f"Error switching animation mode: {e}")
                 return JSONResponse(status_code=500, content={"error": str(e)})
+
+        @self.app.post("/api/render-engine")
+        async def set_render_engine(request: Request):
+            """Set render engine (Stitcher Mode vs Generative Mode)"""
+            try:
+                from video.animator_selector import AnimatorSelector, RenderEngine
+
+                data = await request.json()
+                engine_str = data.get("engine", "stitcher")
+
+                engine_map = {
+                    "stitcher": RenderEngine.STITCHER,
+                    "generative": RenderEngine.GENERATIVE
+                }
+
+                engine = engine_map.get(engine_str, RenderEngine.STITCHER)
+
+                # Create selector and switch engine
+                selector = AnimatorSelector()
+                selector.switch_engine(engine)
+
+                logger.info(f"Render engine set to {engine.value}")
+                return {"success": True, "engine": engine.value}
+            except Exception as e:
+                logger.error(f"Error setting render engine: {e}")
+                return JSONResponse(status_code=500, content={"success": False, "error": str(e)})
+
+        @self.app.post("/api/settings/save")
+        async def save_settings(request: Request):
+            """Save API settings to .env file"""
+            try:
+                from pathlib import Path
+
+                data = await request.json()
+
+                env_path = Path(".env")
+                env_content = []
+
+                # Read existing .env file
+                if env_path.exists():
+                    with open(env_path, 'r') as f:
+                        env_content = f.readlines()
+
+                # Create a dict of existing values
+                env_dict = {}
+                for line in env_content:
+                    if '=' in line and not line.strip().startswith('#'):
+                        key, value = line.split('=', 1)
+                        env_dict[key.strip()] = value.strip()
+
+                # Update with new values
+                if data.get('supabase_url'):
+                    env_dict['SUPABASE_URL'] = data['supabase_url']
+                if data.get('supabase_key'):
+                    env_dict['SUPABASE_SERVICE_ROLE_KEY'] = data['supabase_key']
+                if data.get('openai_key'):
+                    env_dict['OPENAI_API_KEY'] = data['openai_key']
+                if data.get('groq_key'):
+                    env_dict['GROQ_API_KEY'] = data['groq_key']
+
+                # Write back to .env
+                with open(env_path, 'w') as f:
+                    for key, value in env_dict.items():
+                        f.write(f"{key}={value}\n")
+
+                logger.info("API settings saved to .env file")
+                return {"success": True}
+            except Exception as e:
+                logger.error(f"Failed to save settings: {e}")
+                return JSONResponse(status_code=500, content={"success": False, "error": str(e)})
+
+        @self.app.get("/api/settings/load")
+        async def load_settings():
+            """Load API settings from .env file"""
+            try:
+                from pathlib import Path
+                from dotenv import load_dotenv
+
+                env_path = Path(".env")
+
+                if not env_path.exists():
+                    return {"success": True, "settings": {}}
+
+                # Load .env file
+                load_dotenv(env_path)
+
+                import os
+                settings = {
+                    "supabase_url": os.getenv('SUPABASE_URL', ''),
+                    "supabase_key": os.getenv('SUPABASE_SERVICE_ROLE_KEY', ''),
+                    "openai_key": os.getenv('OPENAI_API_KEY', ''),
+                    "groq_key": os.getenv('GROQ_API_KEY', '')
+                }
+
+                return {"success": True, "settings": settings}
+            except Exception as e:
+                logger.error(f"Failed to load settings: {e}")
+                return JSONResponse(status_code=500, content={"success": False, "error": str(e)})
         
         @self.app.get("/api/status")
         async def get_status():
@@ -1259,6 +1357,7 @@ class WebDashboard:
     <button class="tab-btn" onclick="switchTab('studio')">The Studio</button>
     <button class="tab-btn" onclick="switchTab('harvester')">Active Harvest</button>
     <button class="tab-btn" onclick="switchTab('settings')">Settings</button>
+    <button class="tab-btn" onclick="switchTab('help')">❓ Help</button>
 </div>
 
 <!-- ══════ TAB 0: SETUP WIZARD ══════ -->
@@ -2417,6 +2516,7 @@ class WebDashboard:
                     <option value="voice_preroll">Pre-roll Clips</option>
                     <option value="wardrobe_idle">Wardrobe: Idle</option>
                     <option value="wardrobe_action">Wardrobe: Actions</option>
+                    <option value="stitcher_nodes">🎬 Stitcher Nodes (WebRTC)</option>
                 </select>
             </div>
             <div style="margin-bottom:12px;">
@@ -2725,17 +2825,45 @@ class WebDashboard:
 <!-- ══════ TAB 7: SETTINGS ══════ -->
 <div id="tab-settings" class="tab-content">
     <div class="grid">
+        <!-- Render Engine Selector (Progressive Architecture) -->
+        <div class="card" style="border-left:4px solid var(--accent);">
+            <h3>🎬 Render Engine Selector</h3>
+            <p style="color:var(--muted);font-size:.85em;margin-bottom:12px;">
+                Progressive render architecture: Start with Stitcher Mode for reliability, upgrade to Generative Mode for AI-driven video.
+            </p>
+            <div style="margin-bottom:12px;">
+                <label style="font-size:.85em;color:var(--muted);">Render Engine:</label>
+                <select id="render-engine" onchange="switchRenderEngine()">
+                    <option value="stitcher">Stitcher Mode (Pre-recorded Assets)</option>
+                    <option value="generative">Generative Mode (LivePortrait/RunPod)</option>
+                </select>
+            </div>
+            <div id="stitcher-info" style="padding:12px;background:rgba(78,204,163,.1);border-radius:8px;margin-bottom:12px;">
+                <div style="font-weight:bold;margin-bottom:8px;color:var(--accent);">✅ Stitcher Mode</div>
+                <div style="font-size:.85em;color:var(--muted);">
+                    <div style="margin-bottom:4px;">• Uses pre-recorded assets (Idle, Nod, Laugh, Speak)</div>
+                    <div style="margin-bottom:4px;">• 100% fail-safe - no AI dependencies</div>
+                    <div style="margin-bottom:4px;">• Low latency, consistent performance</div>
+                    <div>• Perfect for critical meetings where reliability matters</div>
+                </div>
+            </div>
+            <div id="generative-info" style="padding:12px;background:rgba(233,69,96,.1);border-radius:8px;margin-bottom:12px;display:none;">
+                <div style="font-weight:bold;margin-bottom:8px;color:var(--danger);">⚡ Generative Mode</div>
+                <div style="font-size:.85em;color:var(--muted);">
+                    <div style="margin-bottom:4px;">• LivePortrait AI for real-time lip-sync</div>
+                    <div style="margin-bottom:4px;">• Requires GPU (RunPod) or local GPU</div>
+                    <div style="margin-bottom:4px;">• Higher latency, more resource-intensive</div>
+                    <div>• Best for casual meetings where AI novelty matters</div>
+                </div>
+            </div>
+            <div class="controls-row">
+                <button class="btn btn-accent" onclick="saveRenderEngine()">Save Render Engine</button>
+            </div>
+        </div>
+
         <!-- System Configuration -->
         <div class="card">
             <h3>System Configuration</h3>
-            <div style="margin-bottom:12px;">
-                <label style="font-size:.85em;color:var(--muted);">Render Mode:</label>
-                <select id="render-mode">
-                    <option value="placeholder">Placeholder (Text only)</option>
-                    <option value="liveportrait">LivePortrait (Lip-sync)</option>
-                    <option value="warp">WARP (Neural)</option>
-                </select>
-            </div>
             <div style="margin-bottom:12px;">
                 <label style="font-size:.85em;color:var(--muted);">Performance Mode:</label>
                 <select id="perf-mode">
@@ -2754,6 +2882,38 @@ class WebDashboard:
             <div class="controls-row">
                 <button class="btn btn-accent" onclick="saveSystemConfig()">Save Configuration</button>
             </div>
+        </div>
+
+        <!-- API Settings -->
+        <div class="card" style="border-left:4px solid var(--warn);">
+            <h3>🔑 API Settings</h3>
+            <p style="color:var(--muted);font-size:.85em;margin-bottom:12px;">
+                Configure external API keys and endpoints. These are saved to .env file.
+            </p>
+            
+            <div style="margin-bottom:12px;">
+                <label style="font-size:.85em;color:var(--muted);">Supabase URL:</label>
+                <input type="text" id="api-supabase-url" placeholder="https://your-project.supabase.co" style="width:100%;">
+            </div>
+            <div style="margin-bottom:12px;">
+                <label style="font-size:.85em;color:var(--muted);">Supabase Service Role Key:</label>
+                <input type="password" id="api-supabase-key" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." style="width:100%;">
+            </div>
+            <div style="margin-bottom:12px;">
+                <label style="font-size:.85em;color:var(--muted);">OpenAI API Key (optional):</label>
+                <input type="password" id="api-openai-key" placeholder="sk-..." style="width:100%;">
+            </div>
+            <div style="margin-bottom:12px;">
+                <label style="font-size:.85em;color:var(--muted);">Groq API Key (optional):</label>
+                <input type="password" id="api-groq-key" placeholder="gsk_..." style="width:100%;">
+            </div>
+            
+            <div class="controls-row">
+                <button class="btn btn-accent" onclick="saveAPISettings()">Save API Settings</button>
+                <button class="btn btn-outline" onclick="loadAPISettings()">Load from .env</button>
+            </div>
+            
+            <div id="api-status" style="margin-top:12px;font-size:.85em;color:var(--muted);"></div>
         </div>
 
         <!-- Prompts -->
@@ -2984,6 +3144,12 @@ function startAudioMeter() {
 
 async function loadTeleprompter() {
     const mode = document.getElementById('studio-mode').value;
+    
+    if (mode === 'stitcher_nodes') {
+        renderStitcherNodesUI();
+        return;
+    }
+    
     try {
         const r = await fetch('/api/studio/teleprompter/' + mode);
         const d = await r.json();
@@ -2992,6 +3158,67 @@ async function loadTeleprompter() {
         if (currentSentenceIdx < 0) currentSentenceIdx = 0;
         renderTeleprompter();
     } catch(e) { console.error(e); }
+}
+
+function renderStitcherNodesUI() {
+    const el = document.getElementById('teleprompter');
+    el.innerHTML = `
+        <div style="padding:12px;">
+            <h4 style="margin-bottom:12px;color:var(--accent);">🎬 Stitcher Nodes Recording</h4>
+            <p style="color:var(--muted);font-size:.85em;margin-bottom:16px;">
+                Record pre-recorded assets for Stitcher Mode. These are fail-safe assets that don't require AI.
+            </p>
+            
+            <div style="display:flex;flex-direction:column;gap:10px;">
+                <div class="tp-sentence" onclick="selectStitcherNode('idle')" id="node-idle">
+                    <span class="tp-emotion-tag neutral">IDLE</span>
+                    Idle state (sitting still, blinking)
+                </div>
+                <div class="tp-sentence" onclick="selectStitcherNode('nod')" id="node-nod">
+                    <span class="tp-emotion-tag enthusiastic">NOD</span>
+                    Nodding agreement
+                </div>
+                <div class="tp-sentence" onclick="selectStitcherNode('laugh')" id="node-laugh">
+                    <span class="tp-emotion-tag empathetic">LAUGH</span>
+                    Laughing naturally
+                </div>
+                <div class="tp-sentence" onclick="selectStitcherNode('speak')" id="node-speak">
+                    <span class="tp-emotion-tag serious">SPEAK</span>
+                    Speaking state (mouth moving)
+                </div>
+            </div>
+            
+            <div style="margin-top:16px;padding:12px;background:rgba(78,204,163,.1);border-radius:8px;">
+                <div style="font-weight:bold;margin-bottom:8px;color:var(--accent);">Recording Instructions:</div>
+                <div style="font-size:.8em;color:var(--muted);">
+                    <div style="margin-bottom:4px;">• Click a node to select it</div>
+                    <div style="margin-bottom:4px;">• Press "REC" to start WebRTC recording</div>
+                    <div style="margin-bottom:4px;">• Record 3-5 seconds for each node</div>
+                    <div>• Assets saved to assets/video/stitcher_nodes/</div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    currentStitcherNode = 'idle';
+    highlightStitcherNode('idle');
+}
+
+function selectStitcherNode(node) {
+    currentStitcherNode = node;
+    highlightStitcherNode(node);
+}
+
+function highlightStitcherNode(node) {
+    // Remove current class from all nodes
+    ['idle', 'nod', 'laugh', 'speak'].forEach(n => {
+        const el = document.getElementById('node-' + n);
+        if (el) el.classList.remove('current');
+    });
+    
+    // Add current class to selected node
+    const el = document.getElementById('node-' + node);
+    if (el) el.classList.add('current');
 }
 
 function renderTeleprompter() {
@@ -4532,6 +4759,40 @@ async function stopAllOverlays() {
 // ═══════════════════════════════════════════════════════════════
 // SETTINGS
 // ═══════════════════════════════════════════════════════════════
+async function switchRenderEngine() {
+    const engine = document.getElementById('render-engine').value;
+    const stitcherInfo = document.getElementById('stitcher-info');
+    const generativeInfo = document.getElementById('generative-info');
+    
+    if (engine === 'stitcher') {
+        stitcherInfo.style.display = 'block';
+        generativeInfo.style.display = 'none';
+    } else {
+        stitcherInfo.style.display = 'none';
+        generativeInfo.style.display = 'block';
+    }
+}
+
+async function saveRenderEngine() {
+    const engine = document.getElementById('render-engine').value;
+    try {
+        const r = await fetch('/api/render-engine', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({engine})
+        });
+        const d = await r.json();
+        if (d.success) {
+            alert(`Render engine set to ${engine}`);
+        } else {
+            alert('Error: ' + d.error);
+        }
+    } catch(e) {
+        console.error('Failed to save render engine:', e);
+        alert('Failed to save render engine (backend not connected)');
+    }
+}
+
 async function saveSystemConfig() {
     const config = {
         render_mode: document.getElementById('render-mode').value,
@@ -4540,6 +4801,65 @@ async function saveSystemConfig() {
     };
     // TODO: Send to backend
     alert('Configuration saved (placeholder - backend integration needed)');
+}
+
+async function saveAPISettings() {
+    const settings = {
+        supabase_url: document.getElementById('api-supabase-url').value,
+        supabase_key: document.getElementById('api-supabase-key').value,
+        openai_key: document.getElementById('api-openai-key').value,
+        groq_key: document.getElementById('api-groq-key').value
+    };
+    
+    try {
+        const r = await fetch('/api/settings/save', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(settings)
+        });
+        const d = await r.json();
+        
+        const statusEl = document.getElementById('api-status');
+        if (d.success) {
+            statusEl.textContent = '✅ API settings saved to .env file';
+            statusEl.style.color = '#4ecca3';
+        } else {
+            statusEl.textContent = '❌ Error: ' + d.error;
+            statusEl.style.color = '#e94560';
+        }
+    } catch(e) {
+        console.error('Failed to save API settings:', e);
+        const statusEl = document.getElementById('api-status');
+        statusEl.textContent = '❌ Failed to save (backend not connected)';
+        statusEl.style.color = '#e94560';
+    }
+}
+
+async function loadAPISettings() {
+    try {
+        const r = await fetch('/api/settings/load');
+        const d = await r.json();
+        
+        if (d.success) {
+            document.getElementById('api-supabase-url').value = d.settings.supabase_url || '';
+            document.getElementById('api-supabase-key').value = d.settings.supabase_key || '';
+            document.getElementById('api-openai-key').value = d.settings.openai_key || '';
+            document.getElementById('api-groq-key').value = d.settings.groq_key || '';
+            
+            const statusEl = document.getElementById('api-status');
+            statusEl.textContent = '✅ API settings loaded from .env file';
+            statusEl.style.color = '#4ecca3';
+        } else {
+            const statusEl = document.getElementById('api-status');
+            statusEl.textContent = '❌ Error: ' + d.error;
+            statusEl.style.color = '#e94560';
+        }
+    } catch(e) {
+        console.error('Failed to load API settings:', e);
+        const statusEl = document.getElementById('api-status');
+        statusEl.textContent = '❌ Failed to load (backend not connected)';
+        statusEl.style.color = '#e94560';
+    }
 }
 
 async function addPrompt(type) {
