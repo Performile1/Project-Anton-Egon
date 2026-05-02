@@ -46,7 +46,7 @@ if exist "requirements.txt" (
     echo Installing dependencies from requirements.txt...
     REM Install pymupdf with pre-built wheel first (requires --only-binary flag)
     echo Installing pymupdf with pre-built wheel...
-    pip install pymupdf==1.24.10 --only-binary pymupdf --quiet
+    pip install pymupdf==1.27.2.3 --only-binary pymupdf --quiet
     REM Install remaining dependencies
     pip install -r requirements.txt --quiet
     echo [OK] Dependencies installed
