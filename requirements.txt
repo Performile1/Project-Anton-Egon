@@ -2,16 +2,16 @@
 
 # Core
 python-dotenv==1.0.0
-loguru==0.7.2
+loguru==0.7.24
 pydantic==2.5.3
 pyyaml==6.0.1
 
 # Phase 1: Foundation & Data Ingestion
-llama-cpp-python==0.2.57
-chromadb==0.4.22
+llama-cpp-python==0.2.90
+chromadb==0.5.29
 sentence-transformers==2.2.2
 pypdf==3.17.4
-python-docx==1.1.0
+python-docx==1.1.2
 openpyxl==3.1.2
 
 # Phase 2: Audio & Vision
@@ -52,7 +52,8 @@ websockets==12.0
 # Phase 7: Executive Polish & Performance
 psutil==5.9.7
 GPUtil==1.4.0
-aiohttp==3.9.3
+# aiohttp==3.9.3  # Requires compilation - updated to version with pre-built wheels
+aiohttp==3.11.11
 
 # Phase 8: Streaming Pipeline & Latency
 aiortc==1.9.0

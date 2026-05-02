@@ -44,9 +44,15 @@ pip install --upgrade pip --quiet
 REM Check if requirements.txt exists
 if exist "requirements.txt" (
     echo Installing dependencies from requirements.txt...
-    REM Install pymupdf with pre-built wheel first (requires --only-binary flag)
+    REM Install packages that require pre-built wheels first
     echo Installing pymupdf with pre-built wheel...
     pip install pymupdf==1.27.2.3 --only-binary pymupdf --quiet
+    echo Installing llama-cpp-python with pre-built wheel...
+    pip install llama-cpp-python==0.2.90 --only-binary llama-cpp-python --quiet
+    echo Installing aiohttp with pre-built wheel...
+    pip install aiohttp==3.11.11 --only-binary aiohttp --quiet
+    echo Installing chromadb with pre-built wheel...
+    pip install chromadb==0.5.29 --only-binary chromadb --quiet
     REM Install remaining dependencies
     pip install -r requirements.txt --quiet
     echo [OK] Dependencies installed
