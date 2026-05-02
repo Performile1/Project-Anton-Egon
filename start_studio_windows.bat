@@ -12,23 +12,23 @@ echo.
 REM Change to script directory
 cd /d "%~dp0"
 
-REM Check Python
-python --version >nul 2>&1
-if errorlevel 1 (
-    echo [ERROR] Python not found
-    echo Please install Python 3.11 or later from https://www.python.org/
+REM Use Python 3.11 from C:\Python311
+set PYTHON_EXE=C:\Python311\python.exe
+if not exist "%PYTHON_EXE%" (
+    echo [ERROR] Python 3.11 not found at %PYTHON_EXE%
+    echo Please install Python 3.11.9 from https://www.python.org/
     pause
     exit /b 1
 )
 
-for /f "tokens=2" %%i in ('python --version 2^>^&1') do set PYTHON_VERSION=%%i
+for /f "tokens=2" %%i in ('"%PYTHON_EXE%" --version 2^>^&1') do set PYTHON_VERSION=%%i
 echo Python version: %PYTHON_VERSION%
 echo.
 
 REM Check if virtual environment exists
 if not exist "venv" (
-    echo [INFO] Virtual environment not found. Creating one...
-    python -m venv venv
+    echo [INFO] Virtual environment not found. Creating one with Python 3.11...
+    "%PYTHON_EXE%" -m venv venv
     echo [OK] Virtual environment created
     echo.
 )
@@ -44,16 +44,6 @@ pip install --upgrade pip --quiet
 REM Check if requirements.txt exists
 if exist "requirements.txt" (
     echo Installing dependencies from requirements.txt...
-    REM Install packages with pre-built wheels first
-    echo Installing pymupdf with pre-built wheel...
-    pip install pymupdf==1.27.2.3 --only-binary pymupdf --quiet
-    echo Installing aiohttp with pre-built wheel...
-    pip install aiohttp==3.11.11 --only-binary aiohttp --quiet
-    echo Installing pydantic with pre-built wheel...
-    pip install pydantic==2.10.5 --only-binary pydantic --quiet
-    echo Installing av with pre-built wheel...
-    pip install av==14.2.0 --only-binary av --quiet
-    REM Install remaining dependencies (requires C++ Build Tools for compilation)
     pip install -r requirements.txt --quiet
     echo [OK] Dependencies installed
 ) else (
