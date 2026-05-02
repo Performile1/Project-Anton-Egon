@@ -58,8 +58,9 @@ aiohttp==3.9.3
 aiortc==1.9.0
 
 # Phase 11: Active Facilitator
-mediapipe==0.10.9
-PyMuPDF==1.23.8
+mediapipe==0.10.35
+# PyMuPDF==1.23.8  # Requires Visual Studio build tools - using pymupdf instead
+pymupdf==1.24.10  # Pre-built wheel, no compilation needed
 pyautogui==0.9.54
 pytesseract==0.3.10
 
