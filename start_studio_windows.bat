@@ -53,6 +53,10 @@ if exist "requirements.txt" (
     pip install pydantic==2.10.5 --only-binary pydantic --quiet
     echo Installing av with pre-built wheel...
     pip install av==14.2.0 --only-binary av --quiet
+    echo Installing llama-cpp-python with pre-built wheel...
+    pip install llama-cpp-python==0.3.2 --only-binary llama-cpp-python --quiet
+    echo Installing chromadb with pre-built wheel...
+    pip install chromadb==0.6.3 --only-binary chromadb --quiet
     REM Install remaining dependencies
     pip install -r requirements.txt --quiet
     echo [OK] Dependencies installed
