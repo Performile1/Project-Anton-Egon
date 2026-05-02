@@ -62,3 +62,10 @@ mediapipe==0.10.9
 PyMuPDF==1.23.8
 pyautogui==0.9.54
 pytesseract==0.3.10
+
+# Fas 22-24: Billing, Ghostwriter, Turing Test, AI Video Generation
+stripe==7.14.0
+supabase==2.5.0
+
+# Safety Measures
+numpy==1.26.4
