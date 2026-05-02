@@ -7,8 +7,8 @@ pydantic==2.5.3
 pyyaml==6.0.1
 
 # Phase 1: Foundation & Data Ingestion
-llama-cpp-python==0.2.28
-chromadb==0.5.23
+# llama-cpp-python==0.2.28  # Requires Visual Studio Build Tools - temporarily removed
+# chromadb==0.5.23  # chroma-hnswlib requires Visual Studio Build Tools - temporarily removed
 sentence-transformers==2.2.2
 pypdf==3.17.4
 python-docx==1.1.2
