@@ -1262,12 +1262,16 @@ class WebDashboard:
         body { font-family:'Segoe UI',system-ui,sans-serif; background:var(--bg); color:var(--text); }
 
         /* ── Tabs ── */
-        .tab-bar { display:flex; background:#0a0a15; border-bottom:2px solid var(--border); position:sticky; top:0; z-index:100; }
-        .tab-btn { padding:14px 28px; background:none; border:none; color:var(--muted); cursor:pointer;
-                   font-size:1em; font-weight:600; transition:all .2s; border-bottom:3px solid transparent; }
+        .tab-bar { display:flex; background:#0a0a15; border-bottom:2px solid var(--border); position:sticky; top:0; z-index:100;
+                   overflow-x:auto; overflow-y:hidden; scrollbar-width:thin; scrollbar-color:var(--border) transparent; flex-wrap:nowrap; }
+        .tab-bar::-webkit-scrollbar { height:4px; }
+        .tab-bar::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+        .tab-btn { padding:8px 14px; background:none; border:none; color:var(--muted); cursor:pointer;
+                   font-size:.82em; font-weight:600; transition:all .2s; border-bottom:2px solid transparent; white-space:nowrap; flex-shrink:0; }
         .tab-btn:hover { color:var(--text); background:rgba(78,204,163,.08); }
         .tab-btn.active { color:var(--accent); border-bottom-color:var(--accent); }
-        .tab-content { display:none; padding:20px; max-width:1500px; margin:0 auto; }
+        .tab-sep { width:1px; background:var(--border); margin:6px 2px; flex-shrink:0; }
+        .tab-content { display:none; padding:16px; max-width:1500px; margin:0 auto; }
         .tab-content.active { display:block; }
 
         /* ── Cards & Grid ── */
@@ -1343,21 +1347,26 @@ class WebDashboard:
 <!-- ══════ TAB BAR ══════ -->
 <div class="tab-bar">
     <button class="tab-btn" onclick="switchTab('setup', event)" style="background:var(--accent);color:#0f0f1a;">⚙️ Setup</button>
+    <div class="tab-sep"></div>
     <button class="tab-btn active" onclick="switchTab('dashboard', event)">Dashboard</button>
-    <button class="tab-btn" onclick="switchTab('inbox', event)">Unified Inbox</button>
-    <button class="tab-btn" onclick="switchTab('phrases', event)">Phrase Library</button>
-    <button class="tab-btn" onclick="switchTab('chaos', event)">Chaos Dashboard</button>
-    <button class="tab-btn" onclick="switchTab('flaws', event)">Human Flaws</button>
-    <button class="tab-btn" onclick="switchTab('compute', event)">Compute & Power</button>
-    <button class="tab-btn" onclick="switchTab('store', event)">🛒 Anton Store</button>
-    <button class="tab-btn" onclick="switchTab('shadowing', event)">👻 Shadowing</button>
-    <button class="tab-btn" onclick="switchTab('biometrics', event)">🧬 Biometrics</button>
-    <button class="tab-btn" onclick="switchTab('turing', event)">🎭 Turing Test</button>
-    <button class="tab-btn" onclick="switchTab('health', event)">System Health</button>
-    <button class="tab-btn" onclick="switchTab('studio', event)">The Studio</button>
-    <button class="tab-btn" onclick="switchTab('harvester', event)">Active Harvest</button>
+    <button class="tab-btn" onclick="switchTab('studio', event)">Studio</button>
+    <button class="tab-btn" onclick="switchTab('harvester', event)">Harvest</button>
+    <div class="tab-sep"></div>
+    <button class="tab-btn" onclick="switchTab('inbox', event)">Inbox</button>
+    <button class="tab-btn" onclick="switchTab('phrases', event)">Phrases</button>
+    <button class="tab-btn" onclick="switchTab('chaos', event)">Chaos</button>
+    <div class="tab-sep"></div>
+    <button class="tab-btn" onclick="switchTab('flaws', event)">Flaws</button>
+    <button class="tab-btn" onclick="switchTab('shadowing', event)">Shadow</button>
+    <button class="tab-btn" onclick="switchTab('biometrics', event)">Bio</button>
+    <button class="tab-btn" onclick="switchTab('turing', event)">Turing</button>
+    <div class="tab-sep"></div>
+    <button class="tab-btn" onclick="switchTab('compute', event)">Compute</button>
+    <button class="tab-btn" onclick="switchTab('health', event)">Health</button>
+    <button class="tab-btn" onclick="switchTab('store', event)">Store</button>
+    <div class="tab-sep"></div>
     <button class="tab-btn" onclick="switchTab('settings', event)">Settings</button>
-    <button class="tab-btn" onclick="switchTab('help', event)">❓ Help</button>
+    <button class="tab-btn" onclick="switchTab('help', event)">Help</button>
 </div>
 
 <!-- ══════ TAB 0: SETUP WIZARD ══════ -->
