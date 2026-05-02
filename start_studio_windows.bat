@@ -51,7 +51,9 @@ if exist "requirements.txt" (
     pip install aiohttp==3.11.11 --only-binary aiohttp --quiet
     echo Installing pydantic with pre-built wheel...
     pip install pydantic==2.10.5 --only-binary pydantic --quiet
-    REM Install remaining dependencies (skip packages requiring compilation)
+    echo Installing av with pre-built wheel...
+    pip install av==14.2.0 --only-binary av --quiet
+    REM Install remaining dependencies
     pip install -r requirements.txt --quiet
     echo [OK] Dependencies installed
 ) else (
