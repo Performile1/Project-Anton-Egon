@@ -902,14 +902,13 @@ class WebDashboard:
         async def biometrics_scan(request: Request):
             """Start biometrics scan"""
             try:
-                from core.biometrics_scanner import biometrics_scanner
-                if not biometrics_scanner:
-                    return {"success": False, "error": "Biometrics scanner not initialized"}
+                from core.biometrics_scanner import biometrics_scanner, initialize_biometrics_scanner
+                scanner = biometrics_scanner or initialize_biometrics_scanner()
                 
                 data = await request.json()
                 user_id = data.get("user_id", "default_user")
                 
-                profile = await biometrics_scanner.start_scan(user_id)
+                profile = await scanner.start_scan(user_id)
                 
                 return {
                     "success": True,
@@ -925,9 +924,8 @@ class WebDashboard:
         async def generate_ai_video(request: Request):
             """Generate AI video from prompt"""
             try:
-                from core.biometrics_scanner import biometrics_scanner
-                if not biometrics_scanner:
-                    return {"success": False, "error": "Biometrics scanner not initialized"}
+                from core.biometrics_scanner import biometrics_scanner, initialize_biometrics_scanner
+                scanner = biometrics_scanner or initialize_biometrics_scanner()
                 
                 data = await request.json()
                 prompt = data.get("prompt")
