@@ -46,6 +46,7 @@ pytz==2024.1
 fastapi==0.109.0
 uvicorn==0.27.0
 websockets==12.0
+python-multipart==0.0.27
 
 # Phase 7: Executive Polish & Performance
 psutil==5.9.7
